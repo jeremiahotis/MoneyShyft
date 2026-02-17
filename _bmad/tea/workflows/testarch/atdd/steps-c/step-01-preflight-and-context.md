@@ -47,6 +47,21 @@ If any are missing: **HALT** and notify the user.
 
 ---
 
+## 1.5 Mandatory Git Policy Gate (Hard Requirement)
+
+Before any ATDD generation work:
+
+- Run `npm run policy:check`
+- Run `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/atdd/workflow.yaml --story {story_file}`
+
+Rules:
+
+- If `{story_file}` is not resolved yet, resolve it first (or ask user explicitly).
+- If either command fails (non-zero exit), **HALT** and report the failure.
+- Do **not** proceed to Step 2 until both commands pass.
+
+---
+
 ## 2. Load Story Context
 
 - Read story markdown from `{story_file}` (or ask user if not provided)
