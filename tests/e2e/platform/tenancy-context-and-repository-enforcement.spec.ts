@@ -1,4 +1,5 @@
 import { test, expect } from '../../support/fixtures/kernelApi.fixture';
+import { apiRequest } from '../../support/helpers/apiClient';
 import {
   createCrossTenantProbe,
   createTenantScopeHeaders,
@@ -11,7 +12,9 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement j
   }) => {
     // Given a kernel request with tenant context
     // When the kernel context endpoint is called
-    const contextResponse = await request.get('/api/v1/platform/_kernel/context', {
+    const contextResponse = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/context',
       headers: kernelRequest.headers,
     });
 
@@ -20,7 +23,9 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement j
     expect(contextResponse.headers()['x-tenant-id']).toBe(kernelRequest.tenantId);
 
     // And repository diagnostics inherit the same tenant scope
-    const guardResponse = await request.get('/api/v1/platform/_kernel/tenancy/repository-check?resource=transactions', {
+    const guardResponse = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/tenancy/repository-check?resource=transactions',
       headers: kernelRequest.headers,
     });
 
@@ -39,7 +44,9 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement j
     });
 
     // When cross-tenant diagnostics are requested
-    const response = await request.get(`/api/v1/platform/_kernel/tenancy/repository-check${crossTenantProbe.query}`, {
+    const response = await apiRequest(request, {
+      method: 'GET',
+      path: `/api/v1/platform/_kernel/tenancy/repository-check${crossTenantProbe.query}`,
       headers,
     });
 
@@ -57,10 +64,14 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement j
     const headers = createTenantScopeHeaders({ tenantId: 'tenant-repeat' });
 
     // When two guarded reads run in sequence
-    const first = await request.get('/api/v1/platform/_kernel/tenancy/repository-check?resource=accounts', {
+    const first = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/tenancy/repository-check?resource=accounts',
       headers,
     });
-    const second = await request.get('/api/v1/platform/_kernel/tenancy/repository-check?resource=transactions', {
+    const second = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/tenancy/repository-check?resource=transactions',
       headers,
     });
 
