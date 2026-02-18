@@ -16,7 +16,7 @@ type RefusalEnvelopeParams = {
   code: string;
   message: string;
   data?: unknown;
-  refusalType?: 'business' | 'client';
+  refusalType?: 'business' | 'client' | 'security';
   httpStatus?: number;
 };
 
@@ -44,7 +44,7 @@ export type RefusalEnvelopePayload = {
   ok: false;
   code: string;
   message: string;
-  refusalType: 'business' | 'client';
+  refusalType: 'business' | 'client' | 'security';
   correlationId: string | null;
   tenantId: string | null;
   data?: unknown;

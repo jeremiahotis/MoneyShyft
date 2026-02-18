@@ -11,7 +11,13 @@ export async function apiRequest(
   request: APIRequestContext,
   options: RequestOptions,
 ): Promise<APIResponse> {
-  return request.fetch(options.path, {
+  const defaultApiBaseUrl = 'http://localhost:3000';
+  const configuredApiBaseUrl = process.env.API_URL || process.env.API_BASE_URL || defaultApiBaseUrl;
+  const requestUrl = options.path.startsWith('/api/')
+    ? new URL(options.path, configuredApiBaseUrl).toString()
+    : options.path;
+
+  return request.fetch(requestUrl, {
     method: options.method,
     data: options.data,
     headers: options.headers,
