@@ -1,4 +1,30 @@
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const delimiterIndex = line.indexOf('=');
+    if (delimiterIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, delimiterIndex).trim();
+    if (!key || process.env[key] !== undefined) {
+      continue;
+    }
+
+    const value = line.slice(delimiterIndex + 1).trim();
+    process.env[key] = value;
+  }
+}
 
 export default defineConfig({
   testDir: './tests',

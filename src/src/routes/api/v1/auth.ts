@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import type { Knex } from 'knex';
 import AuthService from '../../../services/AuthService';
 import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessToken, generateRefreshToken } from '../../../utils/jwt';
 import { validateRequest } from '../../../middleware/validate';
@@ -6,8 +8,125 @@ import { signupSchema, loginSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
 import logger from '../../../utils/logger';
 import PlatformSessionStore from '../../../platform/sessions/PlatformSessionStore';
+import { generateInvitationCode } from '../../../utils/invitationCode';
+import { createRecommendedSections } from '../../../seeds/production/001_recommended_sections';
+import { createRecommendedTags } from '../../../seeds/production/002_recommended_tags';
 
 const router = Router();
+
+const testEmail = process.env.TEST_EMAIL?.trim();
+const testPassword = process.env.TEST_PASSWORD?.trim();
+const isTestAuthHarnessEnabled = process.env.ENABLE_TEST_AUTH_HARNESS === 'true'
+  && process.env.NODE_ENV !== 'production'
+  && !!testEmail
+  && !!testPassword;
+
+const BCRYPT_ROUNDS = 12;
+const getDb = (): Knex => {
+  // Lazy-load to keep route module import-safe in unit tests that mock app wiring.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require('../../../config/knex').default as Knex;
+};
+
+const canUseTestAuthCredentials = (email: string, password: string): boolean => {
+  if (!isTestAuthHarnessEnabled || !testEmail || !testPassword) {
+    return false;
+  }
+
+  return email.trim().toLowerCase() === testEmail.toLowerCase() && password === testPassword;
+};
+
+const generateUniqueInvitationCode = async (): Promise<string> => {
+  const db = getDb();
+  let attempts = 0;
+  while (attempts < 100) {
+    const code = generateInvitationCode();
+    const existing = await db('households').where({ invitation_code: code }).first();
+    if (!existing) {
+      return code;
+    }
+    attempts += 1;
+  }
+
+  throw new Error('Failed to generate unique invitation code for test auth harness');
+};
+
+const createHarnessHousehold = async (): Promise<string> => {
+  const db = getDb();
+  return db.transaction(async (trx: Knex.Transaction) => {
+    const invitationCode = await generateUniqueInvitationCode();
+    const [household] = await trx('households')
+      .insert({
+        name: 'Test Household',
+        invitation_code: invitationCode,
+      })
+      .returning('*');
+
+    const [incomeSection] = await trx('category_sections')
+      .insert({
+        household_id: household.id,
+        name: 'Income',
+        type: 'flexible',
+        sort_order: -1,
+        is_system: true,
+      })
+      .returning('*');
+
+    await trx('categories')
+      .insert({
+        household_id: household.id,
+        section_id: incomeSection.id,
+        name: 'Income',
+        icon: '💰',
+        color: '#10b981',
+        sort_order: 0,
+        is_system: true,
+      });
+
+    await createRecommendedSections(trx, household.id);
+    await createRecommendedTags(trx, household.id);
+
+    return household.id;
+  });
+};
+
+const ensureHarnessUser = async (email: string, password: string): Promise<void> => {
+  const db = getDb();
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await db('users')
+    .whereRaw('LOWER(email) = ?', [normalizedEmail])
+    .first();
+
+  if (!user) {
+    await AuthService.signup({
+      email: normalizedEmail,
+      password,
+      firstName: 'Test',
+      lastName: 'User',
+      householdName: 'Test Household',
+    });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  if (!isPasswordValid) {
+    updates.password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  }
+
+  if (!user.household_id) {
+    updates.household_id = await createHarnessHousehold();
+    if (!user.role || user.role === 'member') {
+      updates.role = 'admin';
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db('users')
+      .where({ id: user.id })
+      .update(updates);
+  }
+};
 
 /**
  * POST /api/v1/auth/signup
@@ -39,8 +158,29 @@ router.post('/signup', validateRequest(signupSchema), async (req: Request, res: 
  */
 router.post('/login', validateRequest(loginSchema), async (req: Request, res: Response) => {
   try {
+    const normalizedEmail = req.body.email.trim().toLowerCase();
     const { rememberMe = false } = req.body;
-    const { user, accessToken, refreshToken } = await AuthService.login(req.body);
+
+    if (canUseTestAuthCredentials(req.body.email, req.body.password)) {
+      await ensureHarnessUser(normalizedEmail, req.body.password);
+      const { user, accessToken, refreshToken } = await AuthService.login({
+        email: normalizedEmail,
+        password: req.body.password,
+        rememberMe
+      });
+
+      setAuthCookies(res, accessToken, refreshToken, rememberMe);
+      res.json({
+        message: 'Login successful',
+        user
+      });
+      return;
+    }
+
+    const { user, accessToken, refreshToken } = await AuthService.login({
+      ...req.body,
+      email: normalizedEmail,
+    });
 
     // Set HTTP-only cookies with extended duration if rememberMe is true
     setAuthCookies(res, accessToken, refreshToken, rememberMe);
