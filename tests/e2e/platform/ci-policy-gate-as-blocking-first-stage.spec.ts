@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';
 
 test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
-  test.skip('[P0] defines policy stage before all downstream quality jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
+  test('[P0] defines policy stage before all downstream quality jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
 
@@ -24,23 +24,25 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     ).toBe(true);
   });
 
-  test.skip('[P0] blocks lint, test, burn-in, and quality-gates through explicit/transitive dependencies @P0', async ({
+  test('[P0] blocks lint, test, burn-in, and quality-gates through explicit/transitive dependencies @P0', async ({
     ciPolicyContext,
   }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
 
     // When evaluating dependency relationships for quality stages
-    const lintNeedsPolicy = /\nlint:\s*[\s\S]*?\n\s*needs:\s*policy\b/.test(workflow);
-    const testNeedsLint = /\ntest:\s*[\s\S]*?\n\s*needs:\s*lint\b/.test(workflow);
-    const burnInNeedsTest = /\nburn-in:\s*[\s\S]*?\n\s*needs:\s*test\b/.test(workflow);
-    const qualityGatesNeedsTestAndBurnIn = /\nquality-gates:\s*[\s\S]*?\n\s*needs:\s*\[test,\s*burn-in\]/.test(workflow);
+    const lintNeedsPolicy = /\n\s*lint:\s*[\s\S]*?\n\s*needs:\s*policy\b/.test(workflow);
+    const testNeedsLint = /\n\s*test:\s*[\s\S]*?\n\s*needs:\s*lint\b/.test(workflow);
+    const burnInNeedsTest = /\n\s*burn-in:\s*[\s\S]*?\n\s*needs:\s*test\b/.test(workflow);
+    const qualityGatesNeedsTestAndBurnIn = /\n\s*quality-gates:\s*[\s\S]*?\n\s*needs:\s*\[test,\s*burn-in\]/.test(
+      workflow,
+    );
 
     // Then lint/test/burn-in/gates should not proceed when policy fails
     expect(lintNeedsPolicy && testNeedsLint && burnInNeedsTest && qualityGatesNeedsTestAndBurnIn).toBe(true);
   });
 
-  test.skip('[P1] quality-gates execution condition enforces successful upstream dependencies @P1', async ({
+  test('[P1] quality-gates execution condition enforces successful upstream dependencies @P1', async ({
     ciPolicyContext,
   }) => {
     // Given quality gate job definition in CI workflow
@@ -57,7 +59,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     expect(hasAlwaysGateCondition && hasBurnInSuccessOrSkipped).toBe(true);
   });
 
-  test.skip('[P1] report stage always publishes policy and downstream status lines in CI summary @P1', async ({
+  test('[P1] report stage always publishes policy and downstream status lines in CI summary @P1', async ({
     ciPolicyContext,
   }) => {
     // Given the workflow summary/report stages
@@ -75,7 +77,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     );
   });
 
-  test.skip('[P1] local policy gate failure experience includes branch-specific recovery guidance @P1', async ({
+  test('[P1] local policy gate failure experience includes branch-specific recovery guidance @P1', async ({
     ciPolicyContext,
   }) => {
     // Given local execution on a protected default branch

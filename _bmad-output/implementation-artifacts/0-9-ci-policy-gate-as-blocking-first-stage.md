@@ -1,6 +1,6 @@
 # Story 0.9: CI Policy Gate as Blocking First Stage
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -49,12 +49,34 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- Activated Story 0.9 tests (removed `test.skip`) in API and E2E coverage files.
+- Ran targeted story suite:
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
+  - Final result: 10 passed, 0 failed.
+- Ran full regression suite:
+  - `npm run test:e2e`
+  - Result: 10 passed, 48 failed, 30 skipped (failures are outside Story 0.9 scope and block status promotion to `review` in this run).
 
 ### Completion Notes List
 
--
+- AC1 implemented and covered:
+  - CI dependency-chain assertions are active and validate policy-first gating for `lint`, `test`, `burn-in`, and `quality-gates`.
+  - Regex coverage was hardened to allow YAML indentation while preserving dependency assertions.
+- AC2 implemented and covered:
+  - `scripts/enforce-git-policy.sh` now emits actionable local failure context including:
+    - policy file path
+    - current branch
+    - suggested story branch
+    - remediation commands
+- Story-specific coverage is now executable (not skipped) and passing.
+- Full-repo regression is currently red for unrelated suites; story status remains `in-progress` until broader suite health is addressed.
 
 ### File List
 
--
+- scripts/enforce-git-policy.sh
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts
+
+## Change Log
+
+- 2026-02-18: Implemented Story 0.9 AC1/AC2 updates, activated automated coverage, and verified targeted story tests pass. Full regression remains red due to unrelated existing failures.

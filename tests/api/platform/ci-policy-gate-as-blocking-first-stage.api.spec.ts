@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';
 
 test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API coverage', () => {
-  test.skip('[P0] fails fast on default branches during local policy check execution @P0', async ({
+  test('[P0] fails fast on default branches during local policy check execution @P0', async ({
     ciPolicyContext,
   }) => {
     // Given a local run on a protected branch
@@ -27,7 +27,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(hasFailurePrefix && hasBranchFirstContext).toBe(true);
   });
 
-  test.skip('[P0] rejects story pull requests targeting non-codex\\/dev base with actionable branch context @P0', async ({
+  test('[P0] rejects story pull requests targeting non-codex\\/dev base with actionable branch context @P0', async ({
     ciPolicyContext,
   }) => {
     // Given a pull request from a story branch targeting the wrong base branch
@@ -56,7 +56,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(hasFailureHeadline && hasHeadBranchContext && hasBaseBranchContext).toBe(true);
   });
 
-  test.skip('[P1] workflow guard blocks automate workflow when story argument is missing @P1', async ({
+  test('[P1] workflow guard blocks automate workflow when story argument is missing @P1', async ({
     ciPolicyContext,
   }) => {
     // Given automate workflow validation without required --story input
@@ -78,7 +78,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(/Story workflow requires --story/.test(output)).toBe(true);
   });
 
-  test.skip('[P1] branch workflow guard failure output includes exact expected pattern and current branch @P1', async ({
+  test('[P1] branch workflow guard failure output includes exact expected pattern and current branch @P1', async ({
     ciPolicyContext,
   }) => {
     // Given a mismatched story branch for workflow execution
@@ -116,7 +116,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(hasExpectedPattern && hasCurrentBranch).toBe(true);
   });
 
-  test.skip('[P1] policy failure output includes explicit policy path and remediation command for local runs @P1', async ({
+  test('[P1] policy failure output includes explicit policy path and remediation command for local runs @P1', async ({
     ciPolicyContext,
   }) => {
     // Given local execution on codex/dev branch

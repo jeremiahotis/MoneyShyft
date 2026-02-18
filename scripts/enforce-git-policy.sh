@@ -3,6 +3,18 @@ set -euo pipefail
 
 POLICY_FILE="docs/policies/git_policy.md"
 
+print_local_recovery() {
+  local story_id="0-9"
+  local story_slug="ci-policy-gate-as-blocking-first-stage"
+  local story_branch="codex/story-${story_id}-${story_slug}"
+  echo "Policy reference: $POLICY_FILE"
+  echo "Current branch: $branch"
+  echo "Suggested story branch: $story_branch"
+  echo "Remediation:"
+  echo "  npm run start:story-branch -- $story_id $story_slug"
+  echo "  npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/${story_id}-${story_slug}.md"
+}
+
 if [[ ! -f "$POLICY_FILE" ]]; then
   echo "Policy check failed: missing $POLICY_FILE"
   exit 1
@@ -35,6 +47,7 @@ fi
 
 if [[ "$event" == "local" && "$is_default_branch" == "true" ]]; then
   echo "Policy check failed: branch-first policy requires a non-default branch"
+  print_local_recovery
   exit 1
 fi
 
