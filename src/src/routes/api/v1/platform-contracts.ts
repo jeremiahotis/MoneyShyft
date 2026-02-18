@@ -83,6 +83,42 @@ type RefreshSessionRecord = {
 const refreshSessions = new Map<string, RefreshSessionRecord>();
 
 const hashToken = (value: string): string => createHash('sha256').update(value).digest('hex');
+const platformEventsRequiredLineageFields = [
+  'event_id',
+  'tenant_id',
+  'aggregate_type',
+  'aggregate_id',
+  'event_type',
+  'event_version',
+  'occurred_at',
+  'created_at',
+  'payload',
+  'metadata'
+] as const;
+const platformOutboxRequiredDeliveryFields = [
+  'outbox_event_id',
+  'tenant_id',
+  'event_id',
+  'delivery_status',
+  'available_at',
+  'attempt_count',
+  'last_error',
+  'claimed_at',
+  'delivered_at',
+  'payload',
+  'headers',
+  'created_at',
+  'updated_at'
+] as const;
+const platformEventsIndexes = [
+  'events_tenant_occurred_idx',
+  'events_aggregate_lookup_idx'
+] as const;
+const platformOutboxIndexes = [
+  'outbox_delivery_ready_idx',
+  'outbox_replay_cursor_idx',
+  'outbox_event_id_unique_idx'
+] as const;
 
 router.post('/_kernel/contracts/envelope/success', (req: Request, res: Response) => {
   applyEnvelopeTenantOverride(req, res);
@@ -138,6 +174,63 @@ router.post('/_kernel/contracts/envelope/system-error', (req: Request, res: Resp
     message,
     data: req.body?.data,
     httpStatus
+  });
+});
+
+router.get('/_kernel/contracts/events/schema', (req: Request, res: Response) => {
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PLATFORM_EVENTS_SCHEMA_READY',
+    message: 'Canonical platform.events lineage schema contract ready'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    table: 'platform.events',
+    requiredLineageFields: [...platformEventsRequiredLineageFields]
+  });
+});
+
+router.get('/_kernel/contracts/outbox/schema', (req: Request, res: Response) => {
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PLATFORM_OUTBOX_SCHEMA_READY',
+    message: 'Canonical platform.outbox_events delivery schema contract ready'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    table: 'platform.outbox_events',
+    requiredDeliveryFields: [...platformOutboxRequiredDeliveryFields]
+  });
+});
+
+router.get('/_kernel/contracts/events-outbox/indexes', (req: Request, res: Response) => {
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PLATFORM_EVENTS_OUTBOX_INDEXES_READY',
+    message: 'Operational and replay index contract metadata ready'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    events: [...platformEventsIndexes],
+    outbox: [...platformOutboxIndexes]
+  });
+});
+
+router.get('/_kernel/contracts/outbox/replay-query', (req: Request, res: Response) => {
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PLATFORM_OUTBOX_REPLAY_QUERY_READY',
+    message: 'Replay cursor query contract metadata ready'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    table: 'platform.outbox_events',
+    queryKeys: ['delivery_status', 'available_at', 'outbox_event_id'],
+    defaultOrder: ['available_at ASC', 'outbox_event_id ASC']
   });
 });
 

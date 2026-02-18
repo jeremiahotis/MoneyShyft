@@ -8,7 +8,7 @@ import {
 } from '../../support/factories/platformEventOutboxFactory';
 
 test.describe('Story 0.6 atdd - platform events and outbox schema foundations API coverage', () => {
-  test.skip('returns canonical platform.events lineage schema contract @P0', async ({
+  test('returns canonical platform.events lineage schema contract @P0', async ({
     request,
   }) => {
     // Given platform lineage schema expectations for canonical event storage
@@ -34,7 +34,7 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip('returns canonical platform.outbox_events delivery schema contract @P0', async ({
+  test('returns canonical platform.outbox_events delivery schema contract @P0', async ({
     request,
   }) => {
     // Given outbox delivery schema expectations for integration-safe replay
@@ -60,7 +60,7 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip(
+  test(
     'returns operational and replay index contract metadata for events/outbox @P1',
     async ({
     request,
@@ -88,7 +88,7 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip(
+  test(
     'exposes replay cursor semantics for pending outbox delivery queries @P1',
     async ({
     request,
@@ -116,7 +116,7 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip(
+  test(
     'keeps tenant/correlation metadata stable across schema and replay endpoints @P1',
     async ({ request }) => {
       // Given one request context used across all contract endpoints
@@ -160,7 +160,7 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     },
   );
 
-  test.skip(
+  test(
     'publishes deterministic index sets without duplicates for operator adapters @P2',
     async ({ request }) => {
       // Given expected operational/replay index names
