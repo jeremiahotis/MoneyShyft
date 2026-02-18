@@ -1,0 +1,23 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 6,
+  "api_tests": 3,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 1,
+  "acceptance_criteria_covered": [
+    "lint/test/burn-in/gates do not proceed",
+    "failure output includes actionable policy violation context"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "test-healing-patterns"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}

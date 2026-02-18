@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "content": "import { execFileSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\nimport { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';\n\ntest.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {\n  test.skip('[P0] blocks downstream quality graph when policy gate fails @P0', async ({ ciPolicyContext }) => {\n    // Given the CI workflow graph definition\n    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');\n\n    // When evaluating dependency relationships for quality stages\n    const testIsBlockedByPolicy = /\\ntest:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n    const burnInIsBlockedByPolicy = /\\nburn-in:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n    const qualityGatesIsBlockedByPolicy = /\\nquality-gates:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n\n    // Then lint/test/burn-in/gates should all be blocked by the policy stage\n    expect(testIsBlockedByPolicy && burnInIsBlockedByPolicy && qualityGatesIsBlockedByPolicy).toBe(true);\n  });\n\n  test.skip('[P1] CI summary includes actionable policy violation context when policy stage fails @P1', async ({\n    ciPolicyContext,\n  }) => {\n    // Given the workflow summary/report stages\n    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');\n\n    // When searching for policy-specific actionable summary output\n    const reportContainsPolicyStatus = /echo \"- policy: \\$\\{\\{ needs\\.policy\\.result \\}\\}\"/.test(workflow);\n    const reportContainsViolationContext = /policy violation/i.test(workflow);\n    const reportContainsRemediationHint = /start:story-branch|branch:ensure-workflow/.test(workflow);\n\n    // Then summary should include status, violation context, and remediation hints\n    expect(\n      reportContainsPolicyStatus && reportContainsViolationContext && reportContainsRemediationHint,\n    ).toBe(true);\n  });\n\n  test.skip('[P1] local policy gate failure experience mirrors CI-level actionable diagnostics @P1', async ({\n    ciPolicyContext,\n  }) => {\n    // Given local execution on a protected default branch\n    let output = '';\n    try {\n      execFileSync('bash', [ciPolicyContext.policyScript], {\n        env: {\n          ...process.env,\n          GITHUB_EVENT_NAME: 'local',\n          GITHUB_HEAD_REF: 'main',\n        },\n        encoding: 'utf8',\n      });\n    } catch (error) {\n      const typed = error as { stdout?: string; stderr?: string };\n      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;\n    }\n\n    // When validating local diagnostics quality\n    const hasViolationHeadline = /Policy check failed:/.test(output);\n    const hasBranchName = /Current branch:\\s*main/.test(output);\n    const hasRecoveryPath = /codex\\/story-0-9-ci-policy-gate-as-blocking-first-stage/.test(output);\n\n    // Then local feedback should be actionable and branch-specific\n    expect(hasViolationHeadline && hasBranchName && hasRecoveryPath).toBe(true);\n  });\n});\n",
+      "description": "ATDD E2E workflow tests for CI policy-stage blocking behavior (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "lint/test/burn-in/gates do not proceed",
+        "failure output includes actionable policy violation context"
+      ],
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "ciPolicyContext"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "test-healing-patterns"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for CI policy gate story"
+}

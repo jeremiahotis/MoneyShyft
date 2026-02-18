@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts",
+      "content": "import { execFileSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\nimport { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';\n\ntest.describe('Story 0.9 atdd - ci policy gate as blocking first stage API coverage', () => {\n  test.skip('[P0] requires policy as explicit blocking dependency for all downstream quality jobs @P0', async ({\n    ciPolicyContext,\n  }) => {\n    // Given the CI workflow specification for policy-first execution\n    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');\n\n    // When checking downstream job dependency declarations\n    const lintNeedsPolicy = /\\nlint:\\s*[\\s\\S]*?\\n\\s*needs:\\s*policy\\b/.test(workflow);\n    const testNeedsPolicy = /\\ntest:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n    const burnInNeedsPolicy = /\\nburn-in:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n    const qualityGatesNeedsPolicy = /\\nquality-gates:\\s*[\\s\\S]*?\\n\\s*needs:\\s*\\[[^\\]]*policy[^\\]]*\\]/.test(workflow);\n\n    // Then policy must be a direct first-stage blocker for all downstream quality jobs\n    expect(lintNeedsPolicy && testNeedsPolicy && burnInNeedsPolicy && qualityGatesNeedsPolicy).toBe(true);\n  });\n\n  test.skip('[P0] policy check failure output includes branch, policy path, and remediation command @P0', async ({\n    ciPolicyContext,\n  }) => {\n    // Given a simulated local run on a protected default branch\n    let output = '';\n    try {\n      execFileSync('bash', [ciPolicyContext.policyScript], {\n        env: {\n          ...process.env,\n          GITHUB_EVENT_NAME: 'local',\n          GITHUB_HEAD_REF: 'codex/dev',\n        },\n        encoding: 'utf8',\n      });\n    } catch (error) {\n      const typed = error as { stdout?: string; stderr?: string };\n      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;\n    }\n\n    // When evaluating policy violation messaging quality\n    const hasBranchContext = /Current branch:\\s*codex\\/dev/.test(output);\n    const hasPolicyPath = /docs\\/policies\\/git_policy\\.md/.test(output);\n    const hasRemediationCommand = /npm run start:story-branch --/.test(output);\n\n    // Then output must be actionable for immediate remediation\n    expect(hasBranchContext && hasPolicyPath && hasRemediationCommand).toBe(true);\n  });\n\n  test.skip('[P1] branch workflow guard failure output includes exact expected pattern and next-step command @P1', async ({\n    ciPolicyContext,\n  }) => {\n    // Given a mismatched story branch for workflow execution\n    let output = '';\n    try {\n      execFileSync(\n        'bash',\n        [\n          ciPolicyContext.branchGuardScript,\n          '--workflow',\n          '_bmad/tea/workflows/testarch/atdd/workflow.yaml',\n          '--story',\n          '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',\n        ],\n        {\n          env: {\n            ...process.env,\n            GITHUB_HEAD_REF: 'codex/story-0-8-centralized-time-service-and-utc-local-rendering-contract',\n          },\n          encoding: 'utf8',\n        },\n      );\n    } catch (error) {\n      const typed = error as { stdout?: string; stderr?: string };\n      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;\n    }\n\n    // When reading guard failure diagnostics\n    const hasExpectedPattern = /Expected branch pattern:\\s*codex\\/story-0-9-<slug>/.test(output);\n    const hasCurrentBranch = /Current branch:\\s*codex\\/story-0-8-centralized-time-service-and-utc-local-rendering-contract/.test(\n      output,\n    );\n    const hasNextStepCommand = /npm run start:story-branch -- 0-9 ci-policy-gate-as-blocking-first-stage/.test(output);\n\n    // Then output should include concrete diagnostics and a direct next step\n    expect(hasExpectedPattern && hasCurrentBranch && hasNextStepCommand).toBe(true);\n  });\n});\n",
+      "description": "ATDD API tests for CI policy gate blocking and actionable diagnostics (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "lint/test/burn-in/gates do not proceed",
+        "failure output includes actionable policy violation context"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "ciPolicyContext"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING API tests for CI policy gate story"
+}
