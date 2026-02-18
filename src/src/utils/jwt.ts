@@ -73,7 +73,10 @@ export function generateAccessToken(payload: JWTPayload, rememberMe: boolean = f
  */
 export function generateRefreshToken(payload: JWTPayload, rememberMe: boolean = false): string {
   const expiresIn = rememberMe ? EXTENDED_SESSION_REFRESH : SHORT_SESSION_REFRESH;
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_REFRESH_SECRET, {
+    expiresIn,
+    jwtid: crypto.randomUUID(),
+  });
 }
 
 /**
