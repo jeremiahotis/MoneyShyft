@@ -1,42 +1,82 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';
+import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
+
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getJobBlock(workflow: string, jobName: string): string {
+  const pattern = new RegExp(
+    `(?:^|\\n)\\s{2}${escapeRegex(jobName)}:\\s*\\n([\\s\\S]*?)(?=\\n\\s{2}[A-Za-z0-9_-]+:\\s*\\n|$)`,
+  );
+  const match = workflow.match(pattern);
+  return match?.[1] ?? '';
+}
+
+function getNeeds(jobBlock: string): string[] {
+  const inlineNeeds = jobBlock.match(/^\s{4}needs:\s*([^\n]+)\s*$/m);
+  if (inlineNeeds) {
+    const value = inlineNeeds[1].trim();
+    if (value.startsWith('[') && value.endsWith(']')) {
+      return value
+        .slice(1, -1)
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return value ? [value] : [];
+  }
+
+  const multilineNeeds = jobBlock.match(/^\s{4}needs:\s*\n((?:\s{6}-\s*[^\n]+\n?)+)/m);
+  if (!multilineNeeds) return [];
+
+  return multilineNeeds[1]
+    .split('\n')
+    .map((line) => {
+      const match = line.match(/^\s{6}-\s*([^\n]+)/);
+      return match ? match[1].trim() : '';
+    })
+    .filter(Boolean);
+}
 
 test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
-  test('[P0] defines policy stage before all downstream quality jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
+  test('[P0] defines required policy-first quality-stage jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
 
-    // When evaluating stage ordering in the workflow definition
-    const policyIndex = workflow.indexOf('\n  policy:');
-    const lintIndex = workflow.indexOf('\n  lint:');
-    const testIndex = workflow.indexOf('\n  test:');
-    const burnInIndex = workflow.indexOf('\n  burn-in:');
-    const qualityGatesIndex = workflow.indexOf('\n  quality-gates:');
+    // When evaluating required stage presence and policy gate command
+    const policyJob = getJobBlock(workflow, 'policy');
+    const lintJob = getJobBlock(workflow, 'lint');
+    const testJob = getJobBlock(workflow, 'test');
+    const burnInJob = getJobBlock(workflow, 'burn-in');
+    const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
+    const policyRunsGate = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
 
-    // Then policy should be the first quality gate stage in the pipeline graph
+    // Then CI should define all required quality jobs and run policy:check in policy stage
     expect(
-      policyIndex > -1 &&
-        lintIndex > policyIndex &&
-        testIndex > lintIndex &&
-        burnInIndex > testIndex &&
-        qualityGatesIndex > burnInIndex,
+      policyJob.length > 0 &&
+        lintJob.length > 0 &&
+        testJob.length > 0 &&
+        burnInJob.length > 0 &&
+        qualityGatesJob.length > 0 &&
+        policyRunsGate,
     ).toBe(true);
   });
 
-  test('[P0] blocks lint, test, burn-in, and quality-gates through explicit/transitive dependencies @P0', async ({
+  test('[P0] blocks lint, test, burn-in, and quality-gates through explicit dependency graph edges @P0', async ({
     ciPolicyContext,
   }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
 
     // When evaluating dependency relationships for quality stages
-    const lintNeedsPolicy = /\n\s*lint:\s*[\s\S]*?\n\s*needs:\s*policy\b/.test(workflow);
-    const testNeedsLint = /\n\s*test:\s*[\s\S]*?\n\s*needs:\s*lint\b/.test(workflow);
-    const burnInNeedsTest = /\n\s*burn-in:\s*[\s\S]*?\n\s*needs:\s*test\b/.test(workflow);
-    const qualityGatesNeedsTestAndBurnIn = /\n\s*quality-gates:\s*[\s\S]*?\n\s*needs:\s*\[test,\s*burn-in\]/.test(
-      workflow,
-    );
+    const lintNeedsPolicy = getNeeds(getJobBlock(workflow, 'lint')).includes('policy');
+    const testNeedsLint = getNeeds(getJobBlock(workflow, 'test')).includes('lint');
+    const burnInNeedsTest = getNeeds(getJobBlock(workflow, 'burn-in')).includes('test');
+    const qualityGateNeeds = getNeeds(getJobBlock(workflow, 'quality-gates'));
+    const qualityGatesNeedsTestAndBurnIn =
+      qualityGateNeeds.includes('test') && qualityGateNeeds.includes('burn-in');
 
     // Then lint/test/burn-in/gates should not proceed when policy fails
     expect(lintNeedsPolicy && testNeedsLint && burnInNeedsTest && qualityGatesNeedsTestAndBurnIn).toBe(true);
@@ -80,28 +120,20 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
   test('[P1] local policy gate failure experience includes branch-specific recovery guidance @P1', async ({
     ciPolicyContext,
   }) => {
-    // Given local execution on a protected default branch
-    let output = '';
-    try {
-      execFileSync('bash', [ciPolicyContext.policyScript], {
-        env: {
-          ...process.env,
-          GITHUB_EVENT_NAME: 'local',
-          GITHUB_HEAD_REF: 'main',
-        },
-        encoding: 'utf8',
-      });
-    } catch (error) {
-      const typed = error as { stdout?: string; stderr?: string };
-      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;
-    }
+    // Given local execution in an isolated repository on a protected default branch
+    const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch: 'main',
+      event: 'local',
+      headRef: 'codex/story-0-9-ignored-in-local-mode',
+      commitSubject: '0-9: local policy failure path',
+    });
 
     // When validating local diagnostics quality
     const hasViolationHeadline = /Policy check failed:/.test(output);
-    const hasBranchName = /main/.test(output);
-    const hasRecoveryPath = /codex\/story-0-9-ci-policy-gate-as-blocking-first-stage/.test(output);
+    const hasBranchName = /Current branch:\s*main/.test(output);
+    const hasRecoveryCommand = /npm run start:story-branch -- <story-id> <story-slug>/.test(output);
 
-    // Then local feedback should be actionable and branch-specific
-    expect(hasViolationHeadline && hasBranchName && hasRecoveryPath).toBe(true);
+    // Then local feedback should be actionable and include current branch context
+    expect(status !== 0 && hasViolationHeadline && hasBranchName && hasRecoveryCommand).toBe(true);
   });
 });

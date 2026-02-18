@@ -1,6 +1,7 @@
 export type CiPolicyContext = {
   workflowFile: string;
   policyScript: string;
+  policyFile: string;
   branchGuardScript: string;
   protectedBranches: string[];
   downstreamJobs: string[];
@@ -11,6 +12,7 @@ export function createCiPolicyContext(overrides: Partial<CiPolicyContext> = {}):
   return {
     workflowFile: '.github/workflows/test.yml',
     policyScript: 'scripts/enforce-git-policy.sh',
+    policyFile: 'docs/policies/git_policy.md',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',
     protectedBranches: ['main', 'master', 'codex/dev', 'production'],
     downstreamJobs: ['lint', 'test', 'burn-in', 'quality-gates'],
