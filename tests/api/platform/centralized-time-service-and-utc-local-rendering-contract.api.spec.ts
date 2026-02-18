@@ -3,7 +3,7 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { createTimezoneContext } from '../../support/factories/timezoneContextFactory';
 
 test.describe('Story 0.8 atdd - centralized time service and utc/local rendering contract API coverage', () => {
-  test.skip('[P0] resolves timezone fallback in strict order user -> tenant -> system @P0', async ({
+  test('[P0] resolves timezone fallback in strict order user -> tenant -> system @P0', async ({
     request,
   }) => {
     // Given a request where user timezone is absent and tenant timezone is available
@@ -30,7 +30,7 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     expect(body.timezone).not.toBe('UTC');
   });
 
-  test.skip('[P1] returns localized timestamps for operational payload contract @P1', async ({ request }) => {
+  test('[P1] returns localized timestamps for operational payload contract @P1', async ({ request }) => {
     // Given an operational UTC timestamp and explicit user timezone
     const timezoneContext = createTimezoneContext({
       userTimezone: 'America/Los_Angeles',
@@ -60,7 +60,7 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     expect(body.rendered).not.toContain('T15:30:00.000Z');
   });
 
-  test.skip('[P1] contract endpoint omits raw utc strings in operational-ui response envelope @P1', async ({ request }) => {
+  test('[P1] contract endpoint omits raw utc strings in operational-ui response envelope @P1', async ({ request }) => {
     // Given an operational response feed request with timezone metadata
     const timezoneContext = createTimezoneContext({
       userTimezone: 'America/New_York',
@@ -88,7 +88,7 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     );
   });
 
-  test.skip('[P1] falls back to system timezone when user and tenant preferences are absent @P1', async ({
+  test('[P1] falls back to system timezone when user and tenant preferences are absent @P1', async ({
     request,
   }) => {
     // Given a request where user and tenant timezone are both unavailable
@@ -114,7 +114,7 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     });
   });
 
-  test.skip('[P1] returns refusal envelope when timezone context cannot be resolved @P1', async ({
+  test('[P1] returns refusal envelope when timezone context cannot be resolved @P1', async ({
     request,
   }) => {
     // Given an invalid timezone context payload

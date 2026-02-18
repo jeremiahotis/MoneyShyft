@@ -8,7 +8,8 @@ type TimezoneContextOverrides = {
 };
 
 export function createTimezoneContext(overrides: TimezoneContextOverrides = {}) {
-  const userTimezone = overrides.userTimezone ?? 'America/New_York';
+  const hasUserTimezoneOverride = Object.prototype.hasOwnProperty.call(overrides, 'userTimezone');
+  const userTimezone = hasUserTimezoneOverride ? overrides.userTimezone : 'America/New_York';
   const tenantTimezone = overrides.tenantTimezone ?? 'America/Chicago';
   const systemTimezone = overrides.systemTimezone ?? 'UTC';
   const correlationId = overrides.correlationId ?? randomUUID();
