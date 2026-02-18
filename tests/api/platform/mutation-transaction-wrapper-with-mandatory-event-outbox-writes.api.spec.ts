@@ -7,7 +7,7 @@ import {
 } from '../../support/factories/mutationTransactionWrapperFactory';
 
 test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API coverage', () => {
-  test.skip('enforces atomic domain write plus event and outbox persistence contract @P0', async ({
+  test('enforces atomic domain write plus event and outbox persistence contract @P0', async ({
     request,
   }) => {
     // Given a valid mutation bundle that contains domain, event, and outbox writes
@@ -39,7 +39,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
-  test.skip('returns business refusal when event write is missing from mutation transaction @P0', async ({
+  test('returns business refusal when event write is missing from mutation transaction @P0', async ({
     request,
   }) => {
     // Given a mutation payload that omits event persistence
@@ -71,7 +71,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
-  test.skip('returns business refusal when outbox write is missing from mutation transaction @P0', async ({
+  test('returns business refusal when outbox write is missing from mutation transaction @P0', async ({
     request,
   }) => {
     // Given a mutation payload that omits outbox persistence
@@ -103,7 +103,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
-  test.skip('returns business refusal when both event and outbox writes are missing @P1', async ({
+  test('returns business refusal when both event and outbox writes are missing @P1', async ({
     request,
   }) => {
     // Given a mutation payload that omits both event and outbox persistence
@@ -135,7 +135,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
-  test.skip('guarantees refusal path reports no commit when required writes are missing @P1', async ({
+  test('guarantees refusal path reports no commit when required writes are missing @P1', async ({
     request,
   }) => {
     // Given two invalid mutation payloads (missing event vs missing outbox)
@@ -181,7 +181,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
-  test.skip('preserves tenant and correlation metadata across atomic and refusal contracts @P1', async ({
+  test('preserves tenant and correlation metadata across atomic and refusal contracts @P1', async ({
     request,
   }) => {
     // Given a stable tenant and correlation context reused across contract probes

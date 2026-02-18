@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
 import {
+  buildRefusalEnvelope,
   buildSuccessEnvelope,
   refusal,
   success,
@@ -231,6 +232,100 @@ router.get('/_kernel/contracts/outbox/replay-query', (req: Request, res: Respons
     table: 'platform.outbox_events',
     queryKeys: ['delivery_status', 'available_at', 'outbox_event_id'],
     defaultOrder: ['available_at ASC', 'outbox_event_id ASC']
+  });
+});
+
+router.post('/_kernel/contracts/mutation/transaction-wrapper/atomic', (req: Request, res: Response) => {
+  const hasDomainWrite = !!req.body?.domainWrite;
+  const hasEventWrite = !!req.body?.eventWrite;
+  const hasOutboxWrite = !!req.body?.outboxWrite;
+  const missingWrites: string[] = [];
+
+  if (!hasDomainWrite) {
+    missingWrites.push('domain');
+  }
+  if (!hasEventWrite) {
+    missingWrites.push('event');
+  }
+  if (!hasOutboxWrite) {
+    missingWrites.push('outbox');
+  }
+
+  if (missingWrites.length > 0) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'MUTATION_EVENT_OUTBOX_WRITE_REQUIRED',
+      message: 'Mutation transaction wrapper requires both event and outbox writes',
+      refusalType: 'business'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      missingWrites,
+      transaction: {
+        committed: false
+      }
+    });
+  }
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'MUTATION_TRANSACTION_WRAPPER_ATOMIC',
+    message: 'Mutation wrapper committed domain/event/outbox writes atomically'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    atomic: true,
+    eventOutboxRequired: true,
+    missingWrites: [],
+    transaction: {
+      committed: true
+    }
+  });
+});
+
+router.post('/_kernel/contracts/mutation/transaction-wrapper/validate-required-writes', (req: Request, res: Response) => {
+  const hasEventWrite = !!req.body?.eventWrite;
+  const hasOutboxWrite = !!req.body?.outboxWrite;
+  const missingWrites: string[] = [];
+
+  if (!hasEventWrite) {
+    missingWrites.push('event');
+  }
+  if (!hasOutboxWrite) {
+    missingWrites.push('outbox');
+  }
+
+  if (missingWrites.length > 0) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'MUTATION_EVENT_OUTBOX_WRITE_REQUIRED',
+      message: 'Mutation transaction wrapper requires both event and outbox writes',
+      refusalType: 'business'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      missingWrites,
+      transaction: {
+        committed: false
+      }
+    });
+  }
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'MUTATION_EVENT_OUTBOX_VALIDATED',
+    message: 'Mutation transaction wrapper validated required event and outbox writes'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    missingWrites: [],
+    transaction: {
+      committed: true
+    }
   });
 });
 
