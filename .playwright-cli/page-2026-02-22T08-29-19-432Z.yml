@@ -1,0 +1,20 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - heading "MoneyShyft" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Family budgeting made simple
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Email
+      - textbox "Email" [ref=e12]:
+        - /placeholder: you@example.com
+    - generic [ref=e13]:
+      - generic [ref=e14]: Password
+      - textbox "Password" [ref=e15]:
+        - /placeholder: ••••••••
+    - generic [ref=e16]:
+      - checkbox "Keep me signed in on this device (30 days)" [ref=e17] [cursor=pointer]
+      - generic [ref=e18] [cursor=pointer]: Keep me signed in on this device (30 days)
+    - button "Log in" [ref=e19] [cursor=pointer]:
+      - generic [ref=e20]: Log in
+    - link "Don't have an account? Sign up" [ref=e22] [cursor=pointer]:
+      - /url: /signup
