@@ -69,6 +69,7 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
       expect(registeredPaths).toEqual([
         '/api/v1/platform',
         '/api/v1/platform/admin',
+        '/api/v1/connectshyft',
         '/api/v1/auth',
         '/api/v1/accounts',
         '/api/v1/transactions',

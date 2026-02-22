@@ -1,6 +1,6 @@
 # Story a.1: ConnectShyft Feature Flag and Availability Guardrails
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,24 +22,24 @@ so that rollout can be safely enabled, limited, or reversed without deployment c
 - Access-Control Story: no
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
-- Operability Pairing Notes: Keep refusal messaging consistent across API envelopes and UI unavailable states.
-- Real-User Validation Evidence: Maintenance/unavailable state validation in operator UI and API refusal contract tests.
-- Real-User Validation Result: pending
+- Operability Pairing Notes: API refusals use deterministic business-envelope messaging while UI surfaces show matching unavailable and maintenance copy with disabled controls.
+- Real-User Validation Evidence: Ran `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` and `npm run test:e2e -- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts` to validate module-off and partial-flag operator flows end-to-end.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story is rollout gating and availability behavior, not role assignment.
 
 ## Tasks / Subtasks
 
-- [ ] Implement module and sub-flag evaluation in ConnectShyft entry points (AC: 1, 2)
-  - [ ] Enforce fail-closed behavior when `connectshyft_enabled` is false.
-  - [ ] Enforce selective capability exposure for sub-flags (inbox/escalation/webhooks).
-- [ ] Implement unavailable/refusal behavior and operator messaging (AC: 1, 2)
-  - [ ] Return shared refusal envelope responses for disabled backend endpoints.
-  - [ ] Render explicit unavailable/maintenance messaging in ConnectShyft UI surfaces.
-- [ ] Add deterministic tests for OFF/ON and partial-flag states (AC: 1, 2)
-  - [ ] API tests for refusal envelopes in disabled state.
-  - [ ] E2E tests for visible UI availability messaging and hidden disabled actions.
+- [x] Implement module and sub-flag evaluation in ConnectShyft entry points (AC: 1, 2)
+  - [x] Enforce fail-closed behavior when `connectshyft_enabled` is false.
+  - [x] Enforce selective capability exposure for sub-flags (inbox/escalation/webhooks).
+- [x] Implement unavailable/refusal behavior and operator messaging (AC: 1, 2)
+  - [x] Return shared refusal envelope responses for disabled backend endpoints.
+  - [x] Render explicit unavailable/maintenance messaging in ConnectShyft UI surfaces.
+- [x] Add deterministic tests for OFF/ON and partial-flag states (AC: 1, 2)
+  - [x] API tests for refusal envelopes in disabled state.
+  - [x] E2E tests for visible UI availability messaging and hidden disabled actions.
 
 ## Dev Notes
 
@@ -86,12 +86,42 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context creation only; implementation logs pending.
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` (pass, 6/6)
+- `npm run test:e2e -- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts` (pass, 4/4)
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/featureFlags.test.ts src/src/__tests__/app-entrypoint-kernel.test.ts` (pass)
+- `npm test` in `src/` (pass)
+- `npm run build` in `frontend/` (pass)
+- `npm run policy:check` (fails on pre-existing HEAD commit subject format)
+
+### Implementation Plan
+
+- Add a dedicated ConnectShyft feature-flag evaluator with fail-closed defaults and capability-level refusal contracts.
+- Guard all ConnectShyft backend entry points using shared refusal envelope semantics.
+- Add ConnectShyft frontend availability surfaces driven by deterministic query-flag parsing.
+- Validate OFF/ON/partial states via existing story API and E2E suites plus backend regression tests.
 
 ### Completion Notes List
 
-- Created ConnectShyft Epic A story context with fail-closed rollout guardrails and sub-flag availability behavior.
+- Implemented `src/src/modules/connectshyft/featureFlags.ts` for module and sub-capability evaluation with kill-switch defaults.
+- Added `src/src/routes/api/v1/connectshyft.ts` and wired `/api/v1/connectshyft` registration with deterministic refusal envelopes and enabled-state success responses.
+- Added frontend ConnectShyft availability/inbox UI routes with explicit unavailable and maintenance messaging matching operator contract expectations.
+- Added backend unit coverage for feature-flag parsing/evaluation and updated route-registry contract expectations.
+- Verified acceptance criteria with API + E2E contract suites and broader backend/frontend regression commands.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-1-connectshyft-feature-flag-and-availability-guardrails.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/featureFlags.ts
+- src/src/modules/connectshyft/__tests__/featureFlags.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/api/registerRoutes.ts
+- src/src/__tests__/app-entrypoint-kernel.test.ts
+- frontend/src/features/connectshyft/flags.ts
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftAvailabilityView.vue
+- frontend/src/router/index.ts
+
+## Change Log
+
+- 2026-02-22: Implemented ConnectShyft module/sub-flag fail-closed guardrails across API and UI, and validated deterministic refusal/availability behavior with story API and E2E suites.

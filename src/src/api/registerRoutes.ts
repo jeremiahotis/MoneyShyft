@@ -26,6 +26,7 @@ export const PLATFORM_MIDDLEWARE_CHAIN = [
 export const V1_ROUTE_REGISTRATIONS: RouteRegistration[] = [
   { path: '/api/v1/platform', modulePath: '../routes/api/v1/platform-contracts' },
   { path: '/api/v1/platform/admin', modulePath: '../routes/api/v1/platform-admin' },
+  { path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' },
   { path: '/api/v1/auth', modulePath: '../routes/api/v1/auth' },
   { path: '/api/v1/accounts', modulePath: '../routes/api/v1/accounts' },
   { path: '/api/v1/transactions', modulePath: '../routes/api/v1/transactions' },
