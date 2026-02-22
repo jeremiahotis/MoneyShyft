@@ -4,6 +4,7 @@ import { runBranchWorkflowGuardInTempRepo } from '../../support/utils/branchWork
 
 const FEATURE_STORY_SPRINT_STATUS = `development_status:
   0-10-kernel-readiness-verification-suite: done
+  1-5-policy-gate-and-branch-workflow-guard-enforcement: in-progress
 course_correction:
   cc-2026-02-18:
     status: approved

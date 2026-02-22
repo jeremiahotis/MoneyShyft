@@ -21,10 +21,12 @@ const FEATURE_STORY_ID = '1-1';
 const FEATURE_STORY_BRANCH = 'codex/story-1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails';
 const FEATURE_STORY_FILE =
   '_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md';
+const FEATURE_STORY_KEY = FEATURE_STORY_FILE.replace('_bmad-output/implementation-artifacts/', '').replace(/\.md$/, '');
 
 function createSprintStatus(story010Status: 'done' | 'review', correctionStatus: 'approved' | 'pending'): string {
   return `development_status:
   0-10-kernel-readiness-verification-suite: ${story010Status}
+  ${FEATURE_STORY_KEY}: in-progress
 course_correction:
   cc-2026-02-18:
     status: ${correctionStatus}

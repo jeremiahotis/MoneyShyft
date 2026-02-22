@@ -204,6 +204,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
       epic: 'one',
     });
 
-    expect(status !== 0 && /Epic value must be numeric\. Actual:\s*one/.test(output)).toBe(true);
+    expect(status !== 0 && /Epic value must be numeric(?: or a single letter)?\. Actual:\s*one/.test(output)).toBe(
+      true,
+    );
   });
 });
