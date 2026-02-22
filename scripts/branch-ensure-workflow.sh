@@ -136,16 +136,13 @@ sprint_status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 normalize_story_id() {
   local raw="$1"
   raw="$(basename "$raw")"
-  if [[ "$raw" =~ ^([0-9]+-[0-9]+) ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  if [[ "$raw" =~ ^([0-9]+\.[0-9]+) ]]; then
-    echo "${BASH_REMATCH[1]//./-}"
-    return 0
-  fi
-  if [[ "$raw" =~ ^([0-9]+-[0-9]+)$ ]]; then
-    echo "${BASH_REMATCH[1]}"
+  if [[ "$raw" =~ ^(([0-9]+|[A-Za-z])[.-]([0-9]+)) ]]; then
+    local epic_token="${BASH_REMATCH[2]}"
+    local story_number="${BASH_REMATCH[3]}"
+    if [[ "$epic_token" =~ ^[A-Za-z]$ ]]; then
+      epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+    fi
+    echo "${epic_token}-${story_number}"
     return 0
   fi
   echo ""
@@ -155,7 +152,12 @@ ensure_corrected_kernel_gate() {
   local story_id="$1"
   local epic_id="${story_id%%-*}"
 
-  if [[ "$epic_id" == "0" ]]; then
+  if [[ "$epic_id" =~ ^[0-9]+$ ]]; then
+    if [[ "$epic_id" == "0" ]]; then
+      return 0
+    fi
+  else
+    # Alpha epic IDs (e.g., a-1) belong to non-kernel lanes and are not gated by epic-0 readiness.
     return 0
   fi
 
@@ -305,13 +307,22 @@ process.exit(1);
 
 requires_phase0_readiness() {
   local normalized_story_id="$1"
-  local epic_number="${normalized_story_id%%-*}"
+  local epic_token="${normalized_story_id%%-*}"
 
-  if [[ ! "$epic_number" =~ ^[0-9]+$ ]]; then
+  if [[ "$epic_token" == "0" ]]; then
     return 1
   fi
 
-  [[ "$epic_number" -gt 0 ]]
+  if [[ "$epic_token" =~ ^[0-9]+$ ]]; then
+    [[ "$epic_token" -gt 0 ]]
+    return $?
+  fi
+
+  if [[ "$epic_token" =~ ^[A-Za-z]$ ]]; then
+    return 1
+  fi
+
+  return 1
 }
 
 if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
@@ -370,15 +381,20 @@ if [[ "$workflow_key" =~ $epic_workflow_regex ]]; then
     exit 1
   fi
 
-  if [[ ! "$epic_input" =~ ^[0-9]+$ ]]; then
-    echo "Epic value must be numeric. Actual: $epic_input"
+  if [[ "$epic_input" =~ ^([0-9]+|[A-Za-z])$ ]]; then
+    epic_token="${BASH_REMATCH[1]}"
+    if [[ "$epic_token" =~ ^[A-Za-z]$ ]]; then
+      epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+    fi
+  else
+    echo "Epic value must be numeric or a single letter. Actual: $epic_input"
     exit 1
   fi
 
-  if [[ ! "$branch" =~ ^codex/epic-${epic_input}-ops$ ]]; then
+  if [[ ! "$branch" =~ ^codex/epic-${epic_token}-ops$ ]]; then
     echo "Branch guard failed"
     echo "Workflow key: $workflow_key"
-    echo "Expected branch: codex/epic-${epic_input}-ops"
+    echo "Expected branch: codex/epic-${epic_token}-ops"
     echo "Current branch: $branch"
     exit 1
   fi

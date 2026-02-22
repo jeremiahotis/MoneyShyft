@@ -70,7 +70,7 @@ elif git rev-parse --verify --quiet HEAD~1 >/dev/null; then
 fi
 
 sort -u "$CHANGED_FILES_RAW" | awk '
-  /^_bmad-output\/implementation-artifacts\/[0-9]+-[0-9]+-.*\.md$/ { print }
+  /^_bmad-output\/implementation-artifacts\/([0-9]+|[A-Za-z])-[0-9]+-.*\.md$/ { print }
 ' > "$CHANGED_STORY_FILES"
 
 if [[ ! -s "$CHANGED_STORY_FILES" ]]; then

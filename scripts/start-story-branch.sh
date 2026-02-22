@@ -4,6 +4,7 @@ set -euo pipefail
 usage() {
   echo "Usage: $0 [--allow-dirty] [--lane <lane-id>] <story-id> <slug>"
   echo "Example: $0 0-1 canonical-app-entrypoint-and-platform-middleware-chain"
+  echo "Example: $0 a-1 connectshyft-feature-flag-and-availability-guardrails"
   echo "Example: $0 --lane connectshyft 1-1 admin-user-creation-ui"
   echo "Example: $0 --allow-dirty 0-1 canonical-app-entrypoint-and-platform-middleware-chain"
 }
@@ -43,8 +44,15 @@ story_id="$1"
 shift
 slug_raw="$*"
 
-if [[ ! "$story_id" =~ ^[0-9]+-[0-9]+$ ]]; then
-  echo "Invalid story id '$story_id'. Expected format: <epic>-<story> (e.g. 0-1)"
+if [[ "$story_id" =~ ^([0-9]+|[A-Za-z])-([0-9]+)$ ]]; then
+  epic_token="${BASH_REMATCH[1]}"
+  story_number="${BASH_REMATCH[2]}"
+  if [[ "$epic_token" =~ ^[A-Za-z]$ ]]; then
+    epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+  fi
+  story_id="${epic_token}-${story_number}"
+else
+  echo "Invalid story id '$story_id'. Expected format: <epic>-<story> where <epic> is numeric or a letter (e.g. 0-1, a-1)"
   exit 1
 fi
 
@@ -62,7 +70,7 @@ eval "$lane_context"
 
 status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 
-if [[ "$epic_id" != "0" ]]; then
+if [[ "$epic_id" =~ ^[0-9]+$ && "$epic_id" != "0" ]]; then
   if [[ ! -f "$status_file" ]]; then
     echo "Kernel gate failed: missing $status_file"
     exit 1

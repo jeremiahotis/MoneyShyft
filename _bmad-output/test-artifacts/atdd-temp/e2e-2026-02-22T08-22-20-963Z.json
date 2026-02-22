@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\n\ntest.describe('Story a.1 ConnectShyft Feature Flag and Availability Guardrails (ATDD E2E RED)', () => {\n  test.skip('[P0] module-disabled journey routes operators to explicit unavailable state on ConnectShyft inbox entry @P0', async ({ page }) => {\n    await page.goto('/app/connectshyft/inbox');\n\n    await expect(page.getByTestId('connectshyft-unavailable-state')).toBeVisible();\n    await expect(page.getByRole('heading', { name: 'ConnectShyft unavailable' })).toBeVisible();\n    await expect(page.getByText('Enable connectshyft_enabled to access this module.')).toBeVisible();\n    await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();\n  });\n\n  test.skip('[P1] partial-flag journey shows only enabled capabilities and explicit maintenance messaging for disabled ones @P1', async ({ page }) => {\n    await page.goto('/app/connectshyft/inbox?flags=module:on,inbox:on,escalation:off,webhooks:on');\n\n    await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();\n    await expect(page.getByTestId('connectshyft-capability-inbox')).toHaveText('Available');\n    await expect(page.getByTestId('connectshyft-capability-escalation')).toHaveText('Unavailable');\n    await expect(page.getByTestId('connectshyft-capability-maintenance-banner')).toContainText(\n      'Escalation controls are temporarily unavailable',\n    );\n    await expect(page.getByRole('button', { name: 'Claim thread' })).toBeDisabled();\n  });\n\n  test.skip('[P1] partial-flag journey keeps webhook-related operator controls hidden and explains why @P1', async ({ page }) => {\n    await page.goto('/app/connectshyft/settings/availability?flags=module:on,inbox:on,escalation:on,webhooks:off');\n\n    await expect(page.getByRole('heading', { name: 'ConnectShyft Availability' })).toBeVisible();\n    await expect(page.getByTestId('connectshyft-capability-webhooks')).toHaveText('Unavailable');\n    await expect(page.getByText('Inbound webhook processing is currently unavailable for this tenant.')).toBeVisible();\n    await expect(page.getByRole('button', { name: 'Replay webhook' })).toBeDisabled();\n  });\n});\n",
+      "description": "ATDD E2E tests for ConnectShyft UI availability and capability messaging (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given ConnectShyft feature flags are disabled, when users access ConnectShyft UI surfaces, then the UI fails closed with controlled unavailable messaging.",
+        "Given only selected sub-flags are enabled, when users access ConnectShyft UI capabilities, then only enabled capabilities are exposed with explicit messaging for disabled capabilities."
+      ],
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftAvailabilityUiState",
+    "connectShyftCapabilityBannerAssertions"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for Story a.1 ConnectShyft availability guardrails"
+}

@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.atdd.api.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { apiRequest } from '../../support/helpers/apiClient';\nimport { createTenantScopeHeaders } from '../../support/factories/tenantRepositoryFactory';\n\ntest.describe('Story a.1 ConnectShyft Feature Flag and Availability Guardrails (ATDD API RED)', () => {\n  test.skip('[P0] fail-closed: module-disabled inbox access returns controlled refusal envelope @P0', async ({ request }) => {\n    const headers = {\n      ...createTenantScopeHeaders({\n        tenantId: 'tenant-connectshyft-a',\n        orgUnitId: 'org-connectshyft-east',\n        role: 'TENANT_ADMIN',\n      }),\n      'x-test-connectshyft-flags': JSON.stringify({\n        connectshyft_enabled: false,\n        connectshyft_inbox_enabled: false,\n        connectshyft_escalation_enabled: false,\n        connectshyft_webhooks_enabled: false,\n      }),\n    };\n\n    const response = await apiRequest(request, {\n      method: 'GET',\n      path: '/api/v1/connectshyft/inbox',\n      headers,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: 'CONNECTSHYFT_MODULE_DISABLED',\n      refusalType: 'business',\n      message: expect.stringContaining('ConnectShyft is currently unavailable'),\n    });\n  });\n\n  test.skip('[P0] fail-closed: module-disabled thread ensure endpoint is refused with deterministic contract @P0', async ({ request }) => {\n    const headers = {\n      ...createTenantScopeHeaders({\n        tenantId: 'tenant-connectshyft-a',\n        orgUnitId: 'org-connectshyft-east',\n        role: 'TENANT_ADMIN',\n      }),\n      'x-test-connectshyft-flags': JSON.stringify({\n        connectshyft_enabled: false,\n        connectshyft_inbox_enabled: false,\n        connectshyft_escalation_enabled: false,\n        connectshyft_webhooks_enabled: false,\n      }),\n    };\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/connectshyft/threads',\n      headers,\n      data: {\n        orgUnitId: 'org-connectshyft-east',\n        neighborId: 'neighbor-a-1001',\n      },\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: 'CONNECTSHYFT_MODULE_DISABLED',\n      refusalType: 'business',\n    });\n  });\n\n  test.skip('[P1] partial-flag state exposes inbox while refusing escalation actions with explicit messaging @P1', async ({ request }) => {\n    const headers = {\n      ...createTenantScopeHeaders({\n        tenantId: 'tenant-connectshyft-a',\n        orgUnitId: 'org-connectshyft-east',\n        role: 'TENANT_ADMIN',\n      }),\n      'x-test-connectshyft-flags': JSON.stringify({\n        connectshyft_enabled: true,\n        connectshyft_inbox_enabled: true,\n        connectshyft_escalation_enabled: false,\n        connectshyft_webhooks_enabled: true,\n      }),\n    };\n\n    const inboxResponse = await apiRequest(request, {\n      method: 'GET',\n      path: '/api/v1/connectshyft/inbox',\n      headers,\n    });\n    expect(inboxResponse.status()).toBe(200);\n\n    const claimResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/connectshyft/threads/thread-a-1001/claim',\n      headers,\n      data: {\n        reason: 'operator-claim',\n      },\n    });\n\n    expect(claimResponse.status()).toBe(200);\n    const claimBody = await claimResponse.json();\n    expect(claimBody).toMatchObject({\n      ok: false,\n      code: 'CONNECTSHYFT_ESCALATION_CAPABILITY_DISABLED',\n      refusalType: 'business',\n      message: expect.stringContaining('escalation capability is unavailable'),\n    });\n  });\n\n  test.skip('[P1] webhooks sub-flag disabled refuses inbound SMS webhook processing deterministically @P1', async ({ request }) => {\n    const headers = {\n      ...createTenantScopeHeaders({\n        tenantId: 'tenant-connectshyft-a',\n        orgUnitId: 'org-connectshyft-east',\n        role: 'TENANT_ADMIN',\n      }),\n      'x-test-connectshyft-flags': JSON.stringify({\n        connectshyft_enabled: true,\n        connectshyft_inbox_enabled: true,\n        connectshyft_escalation_enabled: true,\n        connectshyft_webhooks_enabled: false,\n      }),\n    };\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/connectshyft/webhooks/sms',\n      headers,\n      data: {\n        sid: 'SM1234567890',\n        from: '+12605550123',\n        to: '+12605550999',\n        body: 'Need help with pickup update',\n      },\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: 'CONNECTSHYFT_WEBHOOKS_DISABLED',\n      refusalType: 'business',\n      message: expect.stringContaining('webhook processing is unavailable'),\n    });\n  });\n});\n",
+      "description": "ATDD API tests for ConnectShyft feature-flag fail-closed and partial-capability behavior (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given ConnectShyft feature flags are disabled, when users access ConnectShyft API surfaces, then responses fail closed with controlled refusal semantics.",
+        "Given only selected sub-flags are enabled, when users access ConnectShyft capabilities, then only enabled capabilities are exposed and disabled capabilities are refused with explicit messaging."
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftFlagHeaderFactory",
+    "connectShyftTenantOrgContext"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 FAILING API tests for Story a.1 ConnectShyft feature flag guardrails"
+}

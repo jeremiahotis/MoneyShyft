@@ -12,10 +12,20 @@ print_recovery() {
   local workflow_hint="${1:-dev-story}"
   local story_id=""
   local story_slug=""
+  local branch_story_id=""
+  local branch_epic_token=""
+  local branch_story_slug=""
 
-  if [[ "$branch" =~ ^codex/story-([0-9]+-[0-9]+)-(.+)$ ]]; then
-    story_id="${BASH_REMATCH[1]}"
-    story_slug="${BASH_REMATCH[2]}"
+  if [[ "$branch" =~ ^codex/story-(([0-9]+|[A-Za-z])-[0-9]+)-(.+)$ ]]; then
+    branch_story_id="${BASH_REMATCH[1]}"
+    branch_epic_token="${BASH_REMATCH[2]}"
+    branch_story_slug="${BASH_REMATCH[3]}"
+    if [[ "$branch_epic_token" =~ ^[A-Za-z]$ ]]; then
+      story_id="$(echo "$branch_story_id" | tr '[:upper:]' '[:lower:]')"
+    else
+      story_id="$branch_story_id"
+    fi
+    story_slug="$branch_story_slug"
   fi
 
   echo "Remediation:"
@@ -112,8 +122,12 @@ fi
 last_subject="$(git log -1 --pretty=%s 2>/dev/null || true)"
 subject_source="HEAD"
 story_branch_id=""
-if [[ "$branch" =~ ^codex/story-([0-9]+-[0-9]+)- ]]; then
+if [[ "$branch" =~ ^codex/story-(([0-9]+|[A-Za-z])-[0-9]+)- ]]; then
   story_branch_id="${BASH_REMATCH[1]}"
+  story_branch_epic_token="${BASH_REMATCH[2]}"
+  if [[ "$story_branch_epic_token" =~ ^[A-Za-z]$ ]]; then
+    story_branch_id="$(echo "$story_branch_id" | tr '[:upper:]' '[:lower:]')"
+  fi
 fi
 
 # GitHub pull_request runs on a synthetic merge commit. Validate commit-subject policy
@@ -136,7 +150,12 @@ enforce_corrected_kernel_gate_for_story() {
     workflow_hint="code-review"
   fi
 
-  if [[ "$epic_id" == "0" ]]; then
+  if [[ "$epic_id" =~ ^[0-9]+$ ]]; then
+    if [[ "$epic_id" == "0" ]]; then
+      return 0
+    fi
+  else
+    # Alpha epic IDs (e.g., a-1) belong to non-kernel lanes and are not gated by epic-0 readiness.
     return 0
   fi
 
@@ -193,13 +212,18 @@ if [[ -n "$last_subject" ]]; then
       # Local/push mode preserves existing merge-subject exemption.
       true
     else
-      if [[ ! "$last_subject" =~ ^[0-9]+-[0-9]+:\ .+ ]]; then
+      if [[ ! "$last_subject" =~ ^(([0-9]+|[A-Za-z])-[0-9]+):\ .+ ]]; then
         echo "Policy check failed: latest commit subject must match '<story-id>: <summary>'"
         echo "Actual ($subject_source): $last_subject"
         exit 1
       fi
 
-      if [[ -n "$story_branch_id" ]] && [[ ! "$last_subject" =~ ^${story_branch_id}:\ .+ ]]; then
+      commit_story_id="${BASH_REMATCH[1]}"
+      if [[ "${BASH_REMATCH[2]}" =~ ^[A-Za-z]$ ]]; then
+        commit_story_id="$(echo "$commit_story_id" | tr '[:upper:]' '[:lower:]')"
+      fi
+
+      if [[ -n "$story_branch_id" ]] && [[ "$commit_story_id" != "$story_branch_id" ]]; then
         echo "Policy check failed: latest commit subject must match '${story_branch_id}: <summary>' for branch $branch"
         echo "Actual ($subject_source): $last_subject"
         print_policy_context
@@ -211,7 +235,16 @@ if [[ -n "$last_subject" ]]; then
 fi
 
 bash scripts/enforce-envelope-helper-guard.sh
-bash scripts/enforce-story-status-sync.sh
+status_sync_args=(--status-file "$lane_sprint_status_file")
+if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
+  status_sync_key="${story_branch_id}-${story_branch_slug}"
+  status_sync_story_file="_bmad-output/implementation-artifacts/${status_sync_key}.md"
+  if [[ ! -f "$status_sync_story_file" ]] && [[ "$story_branch_slug" == "${LANE_SLUG_TOKEN}-"* ]]; then
+    status_sync_key="${story_branch_id}-${story_branch_slug#${LANE_SLUG_TOKEN}-}"
+  fi
+  status_sync_args+=(--story-key "$status_sync_key")
+fi
+bash scripts/enforce-story-status-sync.sh "${status_sync_args[@]}"
 node scripts/enforce-project-lane.js
 bash scripts/enforce-operability-closeout-guard.sh
 

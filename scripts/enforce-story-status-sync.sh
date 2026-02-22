@@ -14,7 +14,7 @@ Usage: bash scripts/enforce-story-status-sync.sh [options]
 Options:
   --status-file <path>  Path to sprint status yaml (default: _bmad-output/implementation-artifacts/sprint-status.yaml)
   --stories-dir <path>  Path to story markdown files (default: _bmad-output/implementation-artifacts)
-  --story-key <key>     Validate only one story key (example: 1-2-tenant-and-module-entitlement-administration)
+  --story-key <key>     Validate only one story key (example: 1-2-... or a-1-...)
   -h, --help            Show this help message
 EOF
 }
@@ -66,7 +66,7 @@ cleanup() {
 trap cleanup EXIT
 
 while IFS=$'\t' read -r key value; do
-  if [[ "$key" =~ ^[0-9]+-[0-9]+-.+ && -n "$value" ]]; then
+  if [[ "$key" =~ ^([0-9]+|[A-Za-z])-[0-9]+-.+ && -n "$value" ]]; then
     printf '%s\t%s\n' "$key" "$value" >> "$SPRINT_MAP_FILE"
   fi
 done < <(
@@ -100,9 +100,12 @@ declare -a target_story_files=()
 if [[ -n "$STORY_KEY" ]]; then
   target_story_files+=("$STORIES_DIR/$STORY_KEY.md")
 else
-  for story_file in "$STORIES_DIR"/[0-9]*-[0-9]*-*.md; do
+  for story_file in "$STORIES_DIR"/*.md; do
     [[ -e "$story_file" ]] || continue
-    target_story_files+=("$story_file")
+    story_key_candidate="$(basename "$story_file" .md)"
+    if [[ "$story_key_candidate" =~ ^([0-9]+|[A-Za-z])-[0-9]+-.+ ]]; then
+      target_story_files+=("$story_file")
+    fi
   done
 fi
 

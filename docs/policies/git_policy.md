@@ -10,6 +10,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Stage only relevant files.
 - Never commit failing checks.
 - Commit format is mandatory: `<story-id>: <imperative summary>`.
+- `<story-id>` format: `<epic>-<story>` where `<epic>` is numeric or a letter (examples: `0-10`, `a-1`).
 - Commit in small slices by AC/subtask scope.
 - One PR per story branch.
 - Story PRs must use merge commit.
@@ -24,6 +25,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `npm run branch:ensure-workflow -- --workflow <name-or-path> --story <story-key-or-story-file>`
 - Required story branch naming:
   - `codex/story-<story-id>-<project-lane>-<short-slug>`
+  - `<story-id>` accepts numeric or letter epic IDs (`1-2`, `a-1`), and dotted form (`a.1`) should normalize to `a-1`.
   - `<project-lane>` token must appear in slug and match resolved lane context.
 - Story branches must be created from `codex/dev` and merged back into `codex/dev`.
 - Do not run story-scoped workflows on `master` or mismatched story branches.
@@ -41,9 +43,9 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 
 - Trigger set: `sprint-planning`, `retrospective`, `correct-course`.
 - Required guard command before execution:
-  - `npm run branch:ensure-workflow -- --workflow <name-or-path> --epic <epic-number>`
+  - `npm run branch:ensure-workflow -- --workflow <name-or-path> --epic <epic-id>`
 - Required epic branch naming:
-  - `codex/epic-<epic-number>-ops`
+  - `codex/epic-<epic-id>-ops` (`<epic-id>` numeric or single letter)
 - Keep epic-level artifacts on that matching epic-ops branch.
 
 ## 4) ATDD / TA / Code Review Gates
@@ -68,7 +70,8 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 
 ### Corrected Kernel Gate (Mandatory for Feature Story Progression)
 
-- Feature stories outside Epic 0 are blocked until corrected kernel acceptance criteria are complete.
+- Numeric feature stories outside Epic 0 are blocked until corrected kernel acceptance criteria are complete.
+- Alpha-epic lanes (for example `a-1` in ConnectShyft) are exempt from this Epic-0 kernel gate.
 - Required sprint-status conditions before starting or validating non-Epic-0 story workflows:
   - `0-10-kernel-readiness-verification-suite: done`
   - `course_correction.cc-2026-02-18.status: approved`
@@ -128,7 +131,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 ## 5) Story Creation Inside Epics (`create-story`)
 
 - `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
-- It parses story key as `epic-story-title` (example: `4-018-model-router-...`) and sets `story_id` as `epic.story`.
+- It parses story key as `epic-story-title` (example: `4-018-model-router-...` or `a-1-connectshyft-...`) and sets `story_id` as `epic.story`.
 - If it is first story in an epic, epic status is moved to `in-progress` when appropriate.
 - It halts if epic is `done` (cannot create new story in a completed epic).
 - It writes story output to implementation artifacts (`_bmad-output/implementation-artifacts/<story_key>.md`).

@@ -1,0 +1,39 @@
+{
+  "story_id": "a-1",
+  "story_title": "ConnectShyft Feature Flag and Availability Guardrails",
+  "tdd_phase": "RED",
+  "total_tests": 7,
+  "api_tests": 4,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 4,
+  "fixture_needs": [
+    "connectShyftFlagHeaderFactory",
+    "connectShyftTenantOrgContext",
+    "connectShyftAvailabilityUiState",
+    "connectShyftCapabilityBannerAssertions"
+  ],
+  "acceptance_criteria_covered": [
+    "Given ConnectShyft feature flags are disabled, when users access ConnectShyft API surfaces, then responses fail closed with controlled refusal semantics.",
+    "Given only selected sub-flags are enabled, when users access ConnectShyft capabilities, then only enabled capabilities are exposed and disabled capabilities are refused with explicit messaging.",
+    "Given ConnectShyft feature flags are disabled, when users access ConnectShyft UI surfaces, then the UI fails closed with controlled unavailable messaging.",
+    "Given only selected sub-flags are enabled, when users access ConnectShyft UI capabilities, then only enabled capabilities are exposed with explicit messaging for disabled capabilities."
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "generated_files": [
+    "tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.atdd.api.spec.ts",
+    "tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.atdd.spec.ts",
+    "tests/fixtures/test-data.ts",
+    "_bmad-output/test-artifacts/atdd-checklist-a-1.md"
+  ]
+}
