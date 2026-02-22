@@ -86,9 +86,9 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` (pass, 6/6)
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` (pass, 7/7)
 - `npm run test:e2e -- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts` (pass, 4/4)
-- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/featureFlags.test.ts src/src/__tests__/app-entrypoint-kernel.test.ts` (pass)
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/featureFlags.test.ts src/src/__tests__/app-entrypoint-kernel.test.ts` (pass, 12/12)
 - `npm test` in `src/` (pass)
 - `npm run build` in `frontend/` (pass)
 - `npm run policy:check` (fails on pre-existing HEAD commit subject format)
@@ -97,16 +97,17 @@ GPT-5 Codex
 
 - Add a dedicated ConnectShyft feature-flag evaluator with fail-closed defaults and capability-level refusal contracts.
 - Guard all ConnectShyft backend entry points using shared refusal envelope semantics.
-- Add ConnectShyft frontend availability surfaces driven by deterministic query-flag parsing.
+- Add ConnectShyft frontend availability surfaces driven by server-sourced availability flags.
 - Validate OFF/ON/partial states via existing story API and E2E suites plus backend regression tests.
 
 ### Completion Notes List
 
 - Implemented `src/src/modules/connectshyft/featureFlags.ts` for module and sub-capability evaluation with kill-switch defaults.
-- Added `src/src/routes/api/v1/connectshyft.ts` and wired `/api/v1/connectshyft` registration with deterministic refusal envelopes and enabled-state success responses.
-- Added frontend ConnectShyft availability/inbox UI routes with explicit unavailable and maintenance messaging matching operator contract expectations.
+- Added `src/src/routes/api/v1/connectshyft.ts` availability endpoint plus deterministic refusal envelopes and capability-aware action exposure for enabled-state responses.
+- Added frontend ConnectShyft availability/inbox UI routes with explicit unavailable and maintenance messaging sourced from backend availability data.
 - Added backend unit coverage for feature-flag parsing/evaluation and updated route-registry contract expectations.
-- Verified acceptance criteria with API + E2E contract suites and broader backend/frontend regression commands.
+- Restricted test-only flag overrides to explicit test harness mode and tightened UI route auth requirements.
+- Verified acceptance criteria with expanded API + E2E contract suites and backend/frontend regression commands.
 
 ### File List
 
@@ -118,10 +119,17 @@ GPT-5 Codex
 - src/src/api/registerRoutes.ts
 - src/src/__tests__/app-entrypoint-kernel.test.ts
 - frontend/src/features/connectshyft/flags.ts
+- frontend/src/vite-env.d.ts
 - frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - frontend/src/views/ConnectShyft/ConnectShyftAvailabilityView.vue
 - frontend/src/router/index.ts
+- scripts/run-playwright-with-preflight.sh
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
+- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts
+- tests/support/factories/connectShyftStoryA1Factory.ts
+- tests/support/fixtures/connectShyftStoryA1.fixture.ts
 
 ## Change Log
 
 - 2026-02-22: Implemented ConnectShyft module/sub-flag fail-closed guardrails across API and UI, and validated deterministic refusal/availability behavior with story API and E2E suites.
+- 2026-02-22: Addressed review findings by moving feature-flag authority server-side, adding positive-path API coverage, auth-gating ConnectShyft UI routes, and syncing story File List with git-tracked story artifacts.

@@ -2,10 +2,9 @@
 
 interface ImportMetaEnv {
   readonly BASE_URL: string;
-  // Add other env variables here as needed
+  readonly VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS?: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
-

@@ -100,9 +100,18 @@ test.describe(
       expect(claimResponse.status()).toBe(200);
       expect(takeoverResponse.status()).toBe(200);
 
+      const inboxBody = await inboxResponse.json();
       const claimBody = await claimResponse.json();
       const takeoverBody = await takeoverResponse.json();
 
+      expect(inboxBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_INBOX_READY',
+      });
+      expect(inboxBody.data.actions).toMatchObject({
+        claim: false,
+        takeover: false,
+      });
       expect(claimBody).toMatchObject({
         ok: false,
         code: 'CONNECTSHYFT_ESCALATION_CAPABILITY_DISABLED',
@@ -112,6 +121,79 @@ test.describe(
         ok: false,
         code: 'CONNECTSHYFT_ESCALATION_CAPABILITY_DISABLED',
         refusalType: 'business',
+      });
+    });
+
+    test('[P1] all-enabled flags allow inbox escalation actions and webhook processing @P1', async ({
+      request,
+      storyA1Context,
+      storyA1AllEnabledHeaders,
+    }) => {
+      const inboxResponse = await apiRequest(request, {
+        method: 'GET',
+        path: storyA1Context.paths.inbox,
+        headers: storyA1AllEnabledHeaders,
+      });
+
+      const claimResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyA1Context.paths.threadClaim,
+        headers: storyA1AllEnabledHeaders,
+        data: {
+          reason: 'operator-claim',
+        },
+      });
+
+      const takeoverResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyA1Context.paths.threadTakeover,
+        headers: storyA1AllEnabledHeaders,
+        data: {
+          reason: 'operator-takeover',
+        },
+      });
+
+      const webhookResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyA1Context.paths.webhookSms,
+        headers: storyA1AllEnabledHeaders,
+        data: {
+          sid: 'SM1234567890-ALLOW',
+          from: '+12605550123',
+          to: '+12605550999',
+          body: 'Enabled state processing check',
+        },
+      });
+
+      expect(inboxResponse.status()).toBe(200);
+      expect(claimResponse.status()).toBe(200);
+      expect(takeoverResponse.status()).toBe(200);
+      expect(webhookResponse.status()).toBe(200);
+
+      const inboxBody = await inboxResponse.json();
+      const claimBody = await claimResponse.json();
+      const takeoverBody = await takeoverResponse.json();
+      const webhookBody = await webhookResponse.json();
+
+      expect(inboxBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_INBOX_READY',
+      });
+      expect(inboxBody.data.actions).toMatchObject({
+        claim: true,
+        takeover: true,
+      });
+      expect(claimBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+      });
+      expect(takeoverBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
+      });
+      expect(webhookBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
       });
     });
 

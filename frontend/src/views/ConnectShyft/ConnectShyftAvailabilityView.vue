@@ -86,13 +86,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { parseConnectShyftUiFlags } from '@/features/connectshyft/flags';
+import { computed, onMounted, ref } from 'vue';
+import {
+  DEFAULT_CONNECTSHYFT_UI_FLAGS,
+  fetchConnectShyftUiFlags,
+} from '@/features/connectshyft/flags';
 
-const route = useRoute();
+const flags = ref({ ...DEFAULT_CONNECTSHYFT_UI_FLAGS });
 
-const flags = computed(() => parseConnectShyftUiFlags(route.query.flags));
+onMounted(async () => {
+  flags.value = await fetchConnectShyftUiFlags();
+});
 
 const moduleAvailable = computed(() => flags.value.connectshyft_enabled);
 const inboxAvailable = computed(
@@ -117,4 +121,3 @@ const maintenanceBanner = computed(() => {
   return '';
 });
 </script>
-

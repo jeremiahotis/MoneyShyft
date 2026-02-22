@@ -1,8 +1,21 @@
 import { test, expect } from '../../support/fixtures/connectShyftStoryA1.fixture';
+import type { Page } from '@playwright/test';
+
+const loginAsOperator = async (page: Page) => {
+  await page.goto('/login');
+  await page.fill('#email', process.env.TEST_EMAIL || 'operator@example.com');
+  await page.fill('#password', process.env.TEST_PASSWORD || 'SecurePass123!');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+};
 
 test.describe(
   'Story a.1 automate - connectshyft feature flag and availability guardrails operator journeys',
   () => {
+    test.beforeEach(async ({ page }) => {
+      await loginAsOperator(page);
+    });
+
     test('[P0] module-disabled journey renders unavailable state and blocks inbox surfaces @P0', async ({
       page,
       storyA1Context,

@@ -13,6 +13,7 @@ TEST_ENV="${TEST_ENV:-local}"
 TEST_EMAIL="${TEST_EMAIL:-operator@example.com}"
 TEST_PASSWORD="${TEST_PASSWORD:-SecurePass123!}"
 ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
+ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
 
 export API_URL
 export API_BASE_URL="$API_URL"
@@ -23,6 +24,7 @@ export TEST_ENV
 export TEST_EMAIL
 export TEST_PASSWORD
 export ENABLE_TEST_AUTH_HARNESS
+export ENABLE_TEST_CONNECTSHYFT_FLAGS
 
 mkdir -p "$RUNTIME_DIR"
 : > "$BACKEND_LOG_FILE"
@@ -313,7 +315,7 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
   fi
 
   echo "Managed runtime policy: starting backend for this test run at $API_URL"
-  (cd src && HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
+  (cd src && HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
   BACKEND_PID=$!
   BACKEND_STARTED=true
   echo "$BACKEND_PID" > "$BACKEND_PID_FILE"
@@ -358,7 +360,7 @@ if [[ "$frontend_requires_managed_start" == "true" ]]; then
   fi
 
   echo "Managed runtime policy: starting frontend for this test run at $BASE_URL"
-  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
+  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
   FRONTEND_PID=$!
   FRONTEND_STARTED=true
   echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"

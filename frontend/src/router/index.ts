@@ -37,13 +37,13 @@ const routes: RouteRecordRaw[] = [
     path: '/app/connectshyft/inbox',
     name: 'connectshyft-inbox',
     component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: true }
   },
   {
     path: '/app/connectshyft/settings/availability',
     name: 'connectshyft-availability',
     component: () => import('@/views/ConnectShyft/ConnectShyftAvailabilityView.vue'),
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: true }
   },
   {
     path: '/accounts',

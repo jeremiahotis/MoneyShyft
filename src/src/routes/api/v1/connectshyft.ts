@@ -4,6 +4,7 @@ import {
   evaluateConnectShyftCapability,
   resolveConnectShyftFeatureFlags,
   type ConnectShyftCapability,
+  type ConnectShyftFeatureFlags,
 } from '../../../modules/connectshyft/featureFlags';
 
 const router = Router();
@@ -12,11 +13,11 @@ const enforceCapability = (
   req: Request,
   res: Response,
   capability: ConnectShyftCapability,
-): boolean => {
+): ConnectShyftFeatureFlags | null => {
   const flags = resolveConnectShyftFeatureFlags(req);
   const evaluation = evaluateConnectShyftCapability(flags, capability);
   if (evaluation.ok) {
-    return true;
+    return flags;
   }
 
   refusal(res, {
@@ -25,11 +26,30 @@ const enforceCapability = (
     refusalType: evaluation.refusalType,
     httpStatus: 200,
   });
-  return false;
+  return null;
 };
 
+router.get('/availability', (req: Request, res: Response) => {
+  const flags = resolveConnectShyftFeatureFlags(req);
+
+  return success(res, {
+    code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
+    message: 'ConnectShyft availability state resolved',
+    data: {
+      flags,
+      capabilities: {
+        module: evaluateConnectShyftCapability(flags, 'module').ok,
+        inbox: evaluateConnectShyftCapability(flags, 'inbox').ok,
+        escalation: evaluateConnectShyftCapability(flags, 'escalation').ok,
+        webhooks: evaluateConnectShyftCapability(flags, 'webhooks').ok,
+      },
+    },
+  });
+});
+
 router.get('/inbox', (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'inbox')) {
+  const flags = enforceCapability(req, res, 'inbox');
+  if (!flags) {
     return;
   }
 
@@ -39,8 +59,8 @@ router.get('/inbox', (req: Request, res: Response) => {
     data: {
       items: [],
       actions: {
-        claim: true,
-        takeover: true,
+        claim: flags.connectshyft_escalation_enabled,
+        takeover: flags.connectshyft_escalation_enabled,
       },
     },
   });
@@ -114,4 +134,3 @@ router.post('/webhooks/sms', (req: Request, res: Response) => {
 });
 
 export default router;
-
