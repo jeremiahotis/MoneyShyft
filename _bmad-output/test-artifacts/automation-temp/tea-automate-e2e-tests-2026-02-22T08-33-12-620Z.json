@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/connectShyftStoryA1.fixture';\n\ntest.describe(\n  'Story a.1 automate - connectshyft feature flag and availability guardrails operator journeys',\n  () => {\n    test('[P0] module-disabled journey renders unavailable state and blocks inbox surfaces @P0', async ({\n      page,\n      storyA1Context,\n    }) => {\n      await page.goto(storyA1Context.paths.inboxUi);\n\n      await expect(page.getByTestId('connectshyft-unavailable-state')).toBeVisible();\n      await expect(\n        page.getByRole('heading', { name: 'ConnectShyft unavailable' }),\n      ).toBeVisible();\n      await expect(\n        page.getByText('Enable connectshyft_enabled to access this module.'),\n      ).toBeVisible();\n      await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();\n      await expect(page.getByRole('button', { name: 'Claim thread' })).toBeHidden();\n    });\n\n    test('[P1] partial-flag journey exposes inbox while escalation controls stay unavailable @P1', async ({\n      page,\n      storyA1Context,\n    }) => {\n      await page.goto(\n        `${storyA1Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:off,webhooks:on`,\n      );\n\n      await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();\n      await expect(page.getByTestId('connectshyft-capability-inbox')).toHaveText(\n        'Available',\n      );\n      await expect(page.getByTestId('connectshyft-capability-escalation')).toHaveText(\n        'Unavailable',\n      );\n      await expect(\n        page.getByTestId('connectshyft-capability-maintenance-banner'),\n      ).toContainText('Escalation controls are temporarily unavailable');\n      await expect(page.getByRole('button', { name: 'Claim thread' })).toBeDisabled();\n      await expect(page.getByRole('button', { name: 'Take over thread' })).toBeDisabled();\n    });\n\n    test('[P1] inbox-disabled journey keeps inbox list hidden and explains capability-specific unavailability @P1', async ({\n      page,\n      storyA1Context,\n    }) => {\n      await page.goto(\n        `${storyA1Context.paths.inboxUi}?flags=module:on,inbox:off,escalation:on,webhooks:on`,\n      );\n\n      await expect(page.getByRole('heading', { name: 'ConnectShyft unavailable' })).toBeVisible();\n      await expect(page.getByTestId('connectshyft-capability-inbox')).toHaveText(\n        'Unavailable',\n      );\n      await expect(page.getByText(/inbox.+unavailable/i)).toBeVisible();\n      await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();\n      await expect(page.getByRole('button', { name: 'Compose message' })).toBeHidden();\n    });\n\n    test('[P1] webhooks-disabled journey hides replay controls and shows explicit maintenance explanation @P1', async ({\n      page,\n      storyA1Context,\n    }) => {\n      await page.goto(\n        `${storyA1Context.paths.availabilityUi}?flags=module:on,inbox:on,escalation:on,webhooks:off`,\n      );\n\n      await expect(\n        page.getByRole('heading', { name: 'ConnectShyft Availability' }),\n      ).toBeVisible();\n      await expect(page.getByTestId('connectshyft-capability-webhooks')).toHaveText(\n        'Unavailable',\n      );\n      await expect(\n        page.getByText(\n          'Inbound webhook processing is currently unavailable for this tenant.',\n        ),\n      ).toBeVisible();\n      await expect(page.getByRole('button', { name: 'Replay webhook' })).toBeDisabled();\n      await expect(\n        page.getByTestId('connectshyft-capability-maintenance-banner'),\n      ).toContainText('Webhook processing is temporarily unavailable');\n    });\n  },\n);\n",
+      "description": "E2E operator-journey coverage for ConnectShyft unavailable and partial-capability UX states",
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 3,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryA1Factory",
+    "connectShyftStoryA1Fixture"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 4,
+  "summary": "Generated 4 E2E tests covering unavailable messaging and disabled action visibility for Story a.1"
+}
