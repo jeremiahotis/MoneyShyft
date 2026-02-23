@@ -47,7 +47,7 @@ development_status:
   a-3-orgunit-number-mapping-management: review
   a-4-escalation-baseline-and-recipient-configuration: review
   a-5-capability-based-route-access-and-envelope-contract-compliance: review
-  epic-a-retrospective: optional
+  epic-a-retrospective: done
   epic-b: backlog
   b-1-tenant-scoped-neighbor-creation-with-required-phone: backlog
   b-2-shared-tenant-identity-and-shared-phone-indicators: backlog
