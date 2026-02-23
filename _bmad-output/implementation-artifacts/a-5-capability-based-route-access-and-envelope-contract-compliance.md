@@ -115,13 +115,32 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/numberMappings.test.ts
 - src/src/modules/connectshyft/__tests__/escalationConfig.test.ts
 - src/src/routes/api/v1/connectshyft.ts
+- frontend/src/services/platformAdmin.ts
+- frontend/src/views/Admin/SystemAdminView.vue
+- frontend/src/views/Admin/TenantAdminView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftNumberMappingsView.vue
+- src/.env.example
+- src/src/api/registerRoutes.ts
+- src/src/platform/middleware/__tests__/moduleEntitlement.test.ts
+- src/src/platform/middleware/moduleEntitlement.ts
+- src/src/routes/api/v1/__tests__/platform-admin.test.ts
+- src/src/routes/api/v1/platform-admin.ts
+- src/src/services/PlatformAdminService.ts
+- src/src/services/__tests__/PlatformAdminService.test.ts
+- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts
+- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts
+- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts
 - tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts
 - tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts
 - tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts
 - tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts
 - tests/fixtures/test-data.ts
+- tests/support/factories/connectShyftStoryA3Factory.ts
 - tests/support/factories/connectShyftStoryA5Factory.ts
 - tests/support/fixtures/connectShyftStoryA5.fixture.ts
+- tests/support/utils/policyScriptTestHarness.ts
+- tests/support/utils/storyStatusTransitionTestHarness.ts
 
 ### Change Log
 
