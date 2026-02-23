@@ -76,6 +76,39 @@
           </article>
 
           <article class="bg-white rounded-xl shadow p-6 border border-gray-100">
+            <h2 class="text-xl font-semibold text-gray-900">Create Tenant Admin User</h2>
+            <p class="mt-1 text-sm text-gray-600">
+              Create a new user directly in this tenant and assign an admin role.
+            </p>
+
+            <form class="mt-5 space-y-4" @submit.prevent="handleCreateTenantAdminUser">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">First Name</label>
+                  <input v-model="newAdminFirstName" type="text" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input v-model="newAdminLastName" type="text" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Email</label>
+                  <input v-model="newAdminEmail" type="email" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Temporary Password</label>
+                  <input v-model="newAdminPassword" type="password" minlength="12" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+              <button type="submit" :disabled="isSubmitting" class="inline-flex items-center justify-center rounded-lg border border-primary-600 px-5 py-2.5 text-primary-700 font-medium hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                Create Tenant Admin User
+              </button>
+            </form>
+          </article>
+
+          <article class="bg-white rounded-xl shadow p-6 border border-gray-100">
             <h2 class="text-xl font-semibold text-gray-900">Assign Tenant Role</h2>
             <p class="mt-1 text-sm text-gray-600">
               Grant or update tenant-level membership role sets.
@@ -84,14 +117,29 @@
             <form class="mt-5 space-y-4" @submit.prevent="handleTenantRoleAssignment">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="tenant-role-user-id" class="block text-sm font-medium text-gray-700">User ID (UUID)</label>
+                  <label for="tenant-role-user-id" class="block text-sm font-medium text-gray-700">User (lookup or UUID)</label>
                   <input
                     id="tenant-role-user-id"
                     v-model="tenantRoleUserId"
                     type="text"
                     required
-                    class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
+                  <div class="mt-2 flex gap-2">
+                    <input
+                      v-model="tenantUserLookupQuery"
+                      type="text"
+                      placeholder="Search name/email"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <button type="button" class="px-3 py-2 border border-gray-300 rounded-lg text-sm" @click="handleTenantUserLookup">Search</button>
+                  </div>
+                  <select v-if="tenantUserLookupResults.length" v-model="tenantRoleUserId" class="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm">
+                    <option value="">Select a user</option>
+                    <option v-for="user in tenantUserLookupResults" :key="user.id" :value="user.id">
+                      {{ user.firstName }} {{ user.lastName }} ({{ user.email }})
+                    </option>
+                  </select>
                 </div>
 
                 <div>
@@ -288,7 +336,7 @@
 import { onMounted, ref } from 'vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import AppBreadcrumbs from '@/components/common/AppBreadcrumbs.vue';
-import { createOrgUnit, upsertOrgUnitMembership, upsertTenantMembership } from '@/services/platformAdmin';
+import { createOrgUnit, upsertOrgUnitMembership, upsertTenantMembership, searchScopedUsers, createScopedAdminUser } from '@/services/platformAdmin';
 import { useAccessStore } from '@/stores/access';
 import { useAuthStore } from '@/stores/auth';
 
@@ -321,6 +369,13 @@ const orgUnitReason = ref('manual-org-unit-create');
 const tenantRoleUserId = ref('');
 const tenantRoleSelection = ref('TENANT_STAFF');
 const tenantRoleReason = ref('manual-tenant-role-assignment');
+const tenantUserLookupQuery = ref('');
+const tenantUserLookupResults = ref<Array<{ id: string; email: string; firstName: string; lastName: string }>>([]);
+
+const newAdminFirstName = ref('');
+const newAdminLastName = ref('');
+const newAdminEmail = ref('');
+const newAdminPassword = ref('');
 
 const orgRoleOrgUnitId = ref('');
 const orgRoleUserId = ref('');
@@ -386,17 +441,60 @@ const handleCreateOrgUnit = async (): Promise<void> => {
   }
 };
 
+
+const handleTenantUserLookup = async (): Promise<void> => {
+  clearStatus();
+
+  try {
+    const query = tenantUserLookupQuery.value.trim();
+    if (query.length < 2) {
+      errorMessage.value = 'Lookup query must be at least 2 characters.';
+      return;
+    }
+
+    const tenantId = authStore.user?.householdId || undefined;
+    tenantUserLookupResults.value = await searchScopedUsers({ query, tenantId, limit: 10 });
+  } catch (err: any) {
+    errorMessage.value = extractErrorMessage(err);
+  }
+};
+
+const handleCreateTenantAdminUser = async (): Promise<void> => {
+  clearStatus();
+  isSubmitting.value = true;
+
+  try {
+    const tenantId = authStore.user?.householdId || undefined;
+    const created = await createScopedAdminUser({
+      tenantId,
+      email: newAdminEmail.value.trim(),
+      password: newAdminPassword.value,
+      firstName: newAdminFirstName.value.trim(),
+      lastName: newAdminLastName.value.trim(),
+      tenantRoleSet: ['TENANT_ADMIN'],
+      reason: 'inline-tenant-admin-create',
+    });
+
+    const user = created.user as { email?: string } | undefined;
+    successMessage.value = user?.email ? `Tenant admin user created: ${user.email}` : 'Tenant admin user created';
+    newAdminFirstName.value = '';
+    newAdminLastName.value = '';
+    newAdminEmail.value = '';
+    newAdminPassword.value = '';
+    await refreshAccess();
+  } catch (err: any) {
+    errorMessage.value = extractErrorMessage(err);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
 const handleTenantRoleAssignment = async (): Promise<void> => {
   clearStatus();
   isSubmitting.value = true;
 
   try {
     const userId = tenantRoleUserId.value.trim();
-    if (!UUID_PATTERN.test(userId)) {
-      errorMessage.value = 'User ID must be a valid UUID.';
-      return;
-    }
-
     const tenantId = authStore.user?.householdId || undefined;
     await upsertTenantMembership({
       tenantId,
@@ -423,11 +521,6 @@ const handleOrgUnitRoleAssignment = async (): Promise<void> => {
     const userId = orgRoleUserId.value.trim();
     if (!UUID_PATTERN.test(orgUnitId)) {
       errorMessage.value = 'OrgUnit ID must be a valid UUID.';
-      return;
-    }
-
-    if (!UUID_PATTERN.test(userId)) {
-      errorMessage.value = 'User ID must be a valid UUID.';
       return;
     }
 
