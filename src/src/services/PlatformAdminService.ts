@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import bcrypt from 'bcryptjs';
 import { generateInvitationCode } from '../utils/invitationCode';
 import { executePlatformMutation } from '../platform/mutations/executePlatformMutation';
 import { redactSensitivePayload } from '../platform/audit/redaction';
@@ -984,4 +985,147 @@ export const evaluateRequestCapabilities = async (
     roles,
     capabilities: Array.from(new Set(Object.values(CAPABILITIES).filter((capability) => hasCapability(roles, capability)))),
   };
+};
+
+
+export interface SearchScopedUsersInput {
+  tenantId?: string;
+  query: string;
+  limit?: number;
+}
+
+export interface CreateScopedAdminUserInput {
+  tenantId?: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  tenantRoleSet: ScopedRole[];
+  reason: string;
+}
+
+const BCRYPT_ROUNDS = 12;
+
+export const searchScopedUsers = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: SearchScopedUsersInput
+) => {
+  const resolvedTenantId = resolveScopedTenantId(actor, input.tenantId);
+  const query = input.query.trim().toLowerCase();
+  const limit = Math.max(1, Math.min(input.limit || 10, 50));
+
+  if (query.length < 2) {
+    throw new Error('QUERY_TOO_SHORT');
+  }
+
+  return trxClient.transaction(async (trx) => {
+    await requireCapability(trx, actor, CAPABILITIES.TENANT_ROLE_ASSIGN, resolvedTenantId);
+
+    const users = await trx('users as u')
+      .join('platform.tenant_memberships as tm', function joinMembership() {
+        this.on('tm.user_id', '=', 'u.id').andOn('tm.tenant_id', '=', trx.raw('?', [resolvedTenantId]));
+      })
+      .where((builder) => {
+        builder
+          .whereRaw('LOWER(u.email) LIKE ?', [`%${query}%`])
+          .orWhereRaw('LOWER(u.first_name) LIKE ?', [`%${query}%`])
+          .orWhereRaw('LOWER(u.last_name) LIKE ?', [`%${query}%`]);
+      })
+      .limit(limit)
+      .select([
+        'u.id',
+        'u.email',
+        'u.first_name as firstName',
+        'u.last_name as lastName',
+        'tm.role_set_json as roleSetJson',
+      ]);
+
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roleSet: parseRoleSetJson(user.roleSetJson),
+    }));
+  });
+};
+
+export const createScopedAdminUser = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: CreateScopedAdminUserInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const roleSet = normalizeRoleSet(input.tenantRoleSet);
+
+  if (roleSet.length === 0) {
+    throw new Error('ROLE_SET_REQUIRED');
+  }
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+    await requireCapability(trx, actor, CAPABILITIES.TENANT_ROLE_ASSIGN, tenantId);
+
+    const existingUser = await trx('users').whereRaw('LOWER(email) = ?', [input.email.trim().toLowerCase()]).first();
+    if (existingUser) {
+      throw new Error('USER_EMAIL_ALREADY_EXISTS');
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+    const [createdUser] = await trx('users')
+      .insert({
+        email: input.email.trim().toLowerCase(),
+        password_hash: passwordHash,
+        first_name: input.firstName.trim(),
+        last_name: input.lastName.trim(),
+        household_id: tenantId,
+        role: roleSet.includes('TENANT_ADMIN') ? 'admin' : 'member',
+      })
+      .returning(['id', 'email', 'first_name', 'last_name', 'household_id']);
+
+    const [membership] = await trx
+      .withSchema('platform')
+      .table('tenant_memberships')
+      .insert({
+        tenant_id: tenantId,
+        user_id: createdUser.id,
+        role_set_json: toRoleSetJson(roleSet),
+      })
+      .onConflict(['tenant_id', 'user_id'])
+      .merge({
+        role_set_json: toRoleSetJson(roleSet),
+        updated_at_utc: trx.fn.now(),
+      })
+      .returning(['tenant_id', 'user_id', 'role_set_json']);
+
+    return {
+      user: {
+        id: createdUser.id,
+        email: createdUser.email,
+        firstName: createdUser.first_name,
+        lastName: createdUser.last_name,
+        tenantId: createdUser.household_id,
+      },
+      membership: {
+        tenantId: membership.tenant_id,
+        userId: membership.user_id,
+        roleSet: parseRoleSetJson(membership.role_set_json),
+      },
+    };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId: actor.userId,
+      eventName: 'platform.tenant.admin-user.created',
+      entityType: 'tenant_membership',
+      entityId: result.membership.userId,
+      payload: {
+        tenantId,
+        userId: result.membership.userId,
+        roleSet: result.membership.roleSet,
+        reason: input.reason.trim(),
+      },
+    }),
+  }, trxClient);
 };

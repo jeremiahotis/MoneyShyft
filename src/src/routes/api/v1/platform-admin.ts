@@ -14,6 +14,8 @@ import {
   upsertTenantMembership,
   upsertTenantModuleEntitlement,
   updateOrgUnit,
+  searchScopedUsers,
+  createScopedAdminUser,
 } from '../../../services/PlatformAdminService';
 
 const router = Router();
@@ -593,6 +595,126 @@ router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
     return systemError(res, {
       code: 'ORG_UNIT_MEMBERSHIP_REVOKE_FAILED',
       message: getMessage(error, 'Failed to revoke org unit membership'),
+      httpStatus: 500,
+    });
+  }
+});
+
+
+router.get('/users/search', async (req: Request, res: Response) => {
+  const tenantId = req.query.tenantId && typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined;
+  const query = req.query.query && typeof req.query.query === 'string' ? req.query.query : '';
+  const limitRaw = req.query.limit && typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+
+  if (query.trim().length < 2) {
+    return refusal(res, {
+      code: 'USER_SEARCH_QUERY_TOO_SHORT',
+      message: 'query must be at least 2 characters',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const users = await searchScopedUsers(db, actorFromRequest(req), {
+      tenantId,
+      query,
+      limit: Number.isFinite(limitRaw) ? limitRaw : undefined,
+    });
+
+    return success(res, {
+      code: 'USER_SEARCH_COMPLETED',
+      message: 'Scoped user search completed',
+      data: { users },
+    });
+  } catch (error) {
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for user search')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'USER_SEARCH_FAILED',
+      message: getMessage(error, 'Failed to search users'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.post('/users', async (req: Request, res: Response) => {
+  const {
+    tenantId,
+    email,
+    password,
+    firstName,
+    lastName,
+    tenantRoleSet,
+    reason,
+  } = req.body || {};
+  const parsedRoleSet = parseRoleSetBody(tenantRoleSet);
+
+  if (
+    (tenantId !== undefined && !isUuid(tenantId))
+    || typeof email !== 'string'
+    || email.trim() === ''
+    || typeof password !== 'string'
+    || password.length < 12
+    || typeof firstName !== 'string'
+    || firstName.trim() === ''
+    || typeof lastName !== 'string'
+    || lastName.trim() === ''
+    || parsedRoleSet.length === 0
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
+    return refusal(res, {
+      code: 'USER_CREATE_INPUT_INVALID',
+      message: 'email, password(>=12), firstName, lastName, tenantRoleSet[], and reason are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const created = await createScopedAdminUser(db, actorFromRequest(req), {
+      tenantId,
+      email,
+      password,
+      firstName,
+      lastName,
+      tenantRoleSet: parsedRoleSet,
+      reason,
+    });
+
+    return success(res, {
+      code: 'ADMIN_USER_CREATED',
+      message: 'Scoped admin user created successfully',
+      data: created,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'USER_EMAIL_ALREADY_EXISTS') {
+      return refusal(res, {
+        code: 'USER_EMAIL_ALREADY_EXISTS',
+        message: 'A user with this email already exists',
+        refusalType: 'client',
+        httpStatus: 409,
+      });
+    }
+
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for admin user creation')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'ADMIN_USER_CREATE_FAILED',
+      message: getMessage(error, 'Failed to create admin user'),
       httpStatus: 500,
     });
   }

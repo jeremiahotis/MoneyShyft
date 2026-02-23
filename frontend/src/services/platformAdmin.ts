@@ -26,6 +26,24 @@ export type RbacEvaluation = {
   capabilities: string[];
 };
 
+export type ScopedUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roleSet: string[];
+};
+
+export type CreateScopedAdminUserInput = {
+  tenantId?: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  tenantRoleSet: string[];
+  reason: string;
+};
+
 export type CreateTenantInput = {
   name: string;
   status?: string;
@@ -93,5 +111,30 @@ export const upsertOrgUnitMembership = async (
   input: UpsertOrgUnitMembershipInput
 ): Promise<Record<string, unknown>> => {
   const response = await api.post<Envelope<Record<string, unknown>>>('/platform/admin/org-unit-memberships', input);
+  return unwrapData<Record<string, unknown>>(response.data);
+};
+
+
+export const searchScopedUsers = async (params: {
+  query: string;
+  tenantId?: string | null;
+  limit?: number;
+}): Promise<ScopedUser[]> => {
+  const response = await api.get<Envelope<{ users: ScopedUser[] }>>('/platform/admin/users/search', {
+    params: {
+      query: params.query,
+      tenantId: params.tenantId || undefined,
+      limit: params.limit,
+    },
+  });
+
+  const data = unwrapData<{ users: ScopedUser[] }>(response.data);
+  return Array.isArray(data.users) ? data.users : [];
+};
+
+export const createScopedAdminUser = async (
+  input: CreateScopedAdminUserInput
+): Promise<Record<string, unknown>> => {
+  const response = await api.post<Envelope<Record<string, unknown>>>('/platform/admin/users', input);
   return unwrapData<Record<string, unknown>>(response.data);
 };
