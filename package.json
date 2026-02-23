@@ -9,6 +9,7 @@
     "test:burn-in": "bash scripts/burn-in.sh 10",
     "test:contracts:backend": "bash scripts/test-contracts-backend.sh",
     "policy:check": "bash scripts/enforce-git-policy.sh",
+    "story:status:update": "bash scripts/update-story-status.sh",
     "branch:ensure-workflow": "bash scripts/branch-ensure-workflow.sh",
     "start:story-branch": "bash scripts/start-story-branch.sh",
     "quality-gates": "bash scripts/quality-gates.sh",

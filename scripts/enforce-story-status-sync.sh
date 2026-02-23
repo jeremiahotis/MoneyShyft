@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATUS_FILE="_bmad-output/implementation-artifacts/sprint-status.yaml"
+STATUS_FILE=""
 STORIES_DIR="_bmad-output/implementation-artifacts"
 STORY_KEY=""
 TMP_DIR=""
@@ -12,7 +12,7 @@ usage() {
 Usage: bash scripts/enforce-story-status-sync.sh [options]
 
 Options:
-  --status-file <path>  Path to sprint status yaml (default: _bmad-output/implementation-artifacts/sprint-status.yaml)
+  --status-file <path>  Path to sprint status yaml (default: resolved from scripts/project-lane-context.js)
   --stories-dir <path>  Path to story markdown files (default: _bmad-output/implementation-artifacts)
   --story-key <key>     Validate only one story key (example: 1-2-... or a-1-...)
   -h, --help            Show this help message
@@ -44,6 +44,46 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+resolve_status_file_from_lane_context() {
+  local branch=""
+  local lane_context_args=(--format shell)
+
+  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ -z "$branch" || "$branch" == "HEAD" ]]; then
+    branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  fi
+  if [[ -n "$branch" && "$branch" != "HEAD" ]]; then
+    lane_context_args+=(--branch "$branch")
+  fi
+  if [[ -n "${PROJECT_LANE:-}" ]]; then
+    lane_context_args+=(--lane "$PROJECT_LANE")
+  fi
+
+  local lane_context=""
+  lane_context="$(node scripts/project-lane-context.js "${lane_context_args[@]}")"
+  eval "$lane_context"
+
+  if [[ -n "${SPRINT_STATUS_FILE:-}" ]]; then
+    echo "$SPRINT_STATUS_FILE"
+    return 0
+  fi
+
+  if [[ -n "${LANE_SPRINT_STATUS_FILE:-}" ]]; then
+    echo "$LANE_SPRINT_STATUS_FILE"
+    return 0
+  fi
+
+  echo ""
+}
+
+if [[ -z "$STATUS_FILE" ]]; then
+  STATUS_FILE="$(resolve_status_file_from_lane_context || true)"
+fi
+
+if [[ -z "$STATUS_FILE" ]]; then
+  STATUS_FILE="_bmad-output/implementation-artifacts/sprint-status.yaml"
+fi
 
 if [[ ! -f "$STATUS_FILE" ]]; then
   echo "Story status sync check failed: missing sprint status file: $STATUS_FILE"

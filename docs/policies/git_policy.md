@@ -105,8 +105,15 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 
 - Story file `Status:` and `_bmad-output/implementation-artifacts/sprint-status.yaml` `development_status` must stay synchronized.
 - A status mismatch is a blocking policy violation.
+- Status transitions must use `scripts/update-story-status.sh` (or `npm run story:status:update -- --story <story-key> --status <status>`) so story and sprint files are updated together.
+- Canonical status transition workflow:
+  - Start development: `npm run story:status:update -- --story <story-key> --status in-progress`
+  - Submit for review: `npm run story:status:update -- --story <story-key> --status review`
+  - Close after review: `npm run story:status:update -- --story <story-key> --status done`
+  - Reopen from review feedback: `npm run story:status:update -- --story <story-key> --status in-progress`
 - Enforced by:
   - `scripts/enforce-story-status-sync.sh`
+  - `scripts/enforce-status-transition-guard.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 
 ### Story Artifact Hygiene Guardrail (Mandatory for PR Validation)

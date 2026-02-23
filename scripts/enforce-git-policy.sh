@@ -281,6 +281,11 @@ if [[ -n "$story_branch_id" ]]; then
 fi
 
 bash scripts/enforce-envelope-helper-guard.sh
+if [[ "${BASH_VERSINFO[0]:-0}" -ge 4 ]]; then
+  bash scripts/enforce-status-transition-guard.sh
+else
+  echo "Policy check note: status transition guard deferred for local Bash <4 runtime."
+fi
 status_sync_args=(--status-file "$lane_sprint_status_file")
 if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
   status_sync_key="${story_branch_id}-${story_branch_slug}"
@@ -303,7 +308,6 @@ if [[ -n "${status_sync_story_file:-}" && -f "$status_sync_story_file" ]]; then
     echo "Policy check note: story artifact hygiene guard deferred for local run (set POLICY_ENFORCE_STORY_ARTIFACT_HYGIENE=true to enforce)."
   fi
 fi
-
 node scripts/enforce-project-lane.js
 bash scripts/enforce-operability-closeout-guard.sh
 
