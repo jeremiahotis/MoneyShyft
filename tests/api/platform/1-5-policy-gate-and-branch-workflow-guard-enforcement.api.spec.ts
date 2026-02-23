@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from '../../support/fixtures/policyWorkflowGuardStory15.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
 import { runBranchWorkflowGuardInTempRepo } from '../../support/utils/branchWorkflowGuardTestHarness';
+import { runStoryStatusTransitionInTempRepo } from '../../support/utils/storyStatusTransitionTestHarness';
 
 function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -139,6 +140,232 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(status !== 0 && hasFailureHeadline && indicatesPrHeadSubject).toBe(true);
   });
+
+  test('[P1] enforces story-status sync against the active project lane sprint-status file @P1', async ({
+    story15Context,
+  }) => {
+    const connectStoryKey = '1-2-tenant-and-module-entitlement-administration';
+    const connectStoryFile = `# Story ${connectStoryKey}
+
+Status: done
+`;
+    const connectSprintStatus = `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${connectStoryKey}: review
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`;
+    const routeSprintStatus = `project_lane: routeshyft
+development_status:
+  ${connectStoryKey}: done
+`;
+
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      event: 'local',
+      commitSubject: '1-2: validate connect lane status sync',
+      seedFiles: {
+        [`_bmad-output/implementation-artifacts/${connectStoryKey}.md`]: connectStoryFile,
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': connectSprintStatus,
+        '_bmad-output/implementation-artifacts/sprint-status.yaml': routeSprintStatus,
+      },
+    });
+
+    const hasMismatch = /Status sync mismatch: 1-2-tenant-and-module-entitlement-administration story='done' sprint='review'/.test(
+      output,
+    );
+
+    expect(status !== 0 && hasMismatch).toBe(true);
+  });
+
+
+  test('[P1] rejects story Status-only edits that bypass sprint-status transition coupling @P1', async ({
+    story15Context,
+  }) => {
+    const storyKey = '1-2-tenant-and-module-entitlement-administration';
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      event: 'local',
+      commitSubject: '1-2: bypass status coupling guard',
+      seedFiles: {
+        [`_bmad-output/implementation-artifacts/${storyKey}.md`]: `# Story ${storyKey}
+
+Status: review
+`,
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: review
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+      workingTreeFiles: {
+        [`_bmad-output/implementation-artifacts/${storyKey}.md`]: `# Story ${storyKey}
+
+Status: done
+`,
+      },
+    });
+
+    const hasGuardFailure = /Status transition guard failed: story '1-2-tenant-and-module-entitlement-administration' changed Status: without matching sprint-status development_status update\./.test(
+      output,
+    );
+
+    expect(status !== 0 && hasGuardFailure).toBe(true);
+  });
+
+  test('[P1] rejects sprint-status-only edits that bypass story Status transition coupling @P1', async ({
+    story15Context,
+  }) => {
+    const storyKey = '1-2-tenant-and-module-entitlement-administration';
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      event: 'local',
+      commitSubject: '1-2: bypass sprint-only status edit',
+      seedFiles: {
+        [`_bmad-output/implementation-artifacts/${storyKey}.md`]: `# Story ${storyKey}
+
+Status: review
+`,
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: review
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+      workingTreeFiles: {
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: done
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+    });
+
+    const hasGuardFailure = /Status transition guard failed: sprint-status key '1-2-tenant-and-module-entitlement-administration' changed without matching story Status: update\./.test(
+      output,
+    );
+
+    expect(status !== 0 && hasGuardFailure).toBe(true);
+  });
+
+  test('[P1] rejects coupled edits when story and sprint target statuses differ @P1', async ({ story15Context }) => {
+    const storyKey = '1-2-tenant-and-module-entitlement-administration';
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      event: 'local',
+      commitSubject: '1-2: mismatched coupled status edit',
+      seedFiles: {
+        [`_bmad-output/implementation-artifacts/${storyKey}.md`]: `# Story ${storyKey}
+
+Status: review
+`,
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: review
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+      workingTreeFiles: {
+        [`_bmad-output/implementation-artifacts/${storyKey}.md`]: `# Story ${storyKey}
+
+Status: done
+`,
+        '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml': `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: in-progress
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+    });
+
+    const hasGuardFailure = /Status transition guard failed: story '1-2-tenant-and-module-entitlement-administration' updated to 'done' while sprint-status updated to 'in-progress'\./.test(
+      output,
+    );
+
+    expect(status !== 0 && hasGuardFailure).toBe(true);
+  });
+
+  test('[P1] updates story and sprint status atomically for active lane story updates @P1', async () => {
+    const storyKey = '1-2-tenant-and-module-entitlement-administration';
+    const storyPath = `_bmad-output/implementation-artifacts/${storyKey}.md`;
+    const connectStatusPath = '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml';
+
+    const { output, status, files } = runStoryStatusTransitionInTempRepo('scripts/update-story-status.sh', {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      args: ['--story', storyKey, '--status', 'done'],
+      seedFiles: {
+        [storyPath]: `# Story ${storyKey}
+
+Status: review
+`,
+        [connectStatusPath]: `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: review
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`,
+      },
+      captureFiles: [storyPath, connectStatusPath],
+    });
+
+    expect(status).toBe(0);
+    expect(/Status update succeeded/.test(output)).toBe(true);
+    expect(/Status: done/.test(files[storyPath] ?? '')).toBe(true);
+    expect(new RegExp(`${storyKey}: done`).test(files[connectStatusPath] ?? '')).toBe(true);
+  });
+
+  test('[P1] rejects invalid lifecycle transition and preserves both status sources @P1', async () => {
+    const storyKey = '1-2-tenant-and-module-entitlement-administration';
+    const storyPath = `_bmad-output/implementation-artifacts/${storyKey}.md`;
+    const connectStatusPath = '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml';
+    const originalStory = `# Story ${storyKey}
+
+Status: ready-for-dev
+`;
+    const originalSprint = `project_lane: connectshyft
+development_status:
+  0-10-kernel-readiness-verification-suite: done
+  ${storyKey}: ready-for-dev
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`;
+
+    const { output, status, files } = runStoryStatusTransitionInTempRepo('scripts/update-story-status.sh', {
+      branch: 'codex/story-1-2-connectshyft-tenant-and-module-entitlement-administration',
+      args: ['--story', storyKey, '--status', 'done'],
+      seedFiles: {
+        [storyPath]: originalStory,
+        [connectStatusPath]: originalSprint,
+      },
+      captureFiles: [storyPath, connectStatusPath],
+    });
+
+    expect(status !== 0).toBe(true);
+    expect(/invalid transition 'ready-for-dev' -> 'done'/.test(output)).toBe(true);
+    expect(files[storyPath]).toBe(originalStory);
+    expect(files[connectStatusPath]).toBe(originalSprint);
+  });
+
 
   test('[P1] rejects epic workflow branch mismatch with explicit expected epic branch diagnostic @P1', async ({
     story15Context,

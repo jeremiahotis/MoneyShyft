@@ -14,6 +14,7 @@ type PolicyScriptHarnessOptions = {
   leaveWorktreeDirty?: boolean;
   seedFiles?: Record<string, string>;
   env?: Record<string, string>;
+  workingTreeFiles?: Record<string, string>;
 };
 
 type PolicyScriptHarnessResult = {
@@ -147,6 +148,11 @@ export function runPolicyScriptInTempRepo(
       true,
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-status-transition-guard.sh'),
+      join(repoDir, 'scripts/enforce-status-transition-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'enforce-story-no-skipped-tests.sh'),
       join(repoDir, 'scripts/enforce-story-no-skipped-tests.sh'),
       true,
@@ -227,6 +233,11 @@ export function runPolicyScriptInTempRepo(
 
     if (options.leaveWorktreeDirty) {
       writeFileSync(join(repoDir, 'LOCAL_WORKTREE_DIRTY.md'), '# dirty worktree marker\n', 'utf8');
+    }
+    for (const [relativePath, contents] of Object.entries(options.workingTreeFiles ?? {})) {
+      const absolutePath = join(repoDir, relativePath);
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, contents, 'utf8');
     }
 
     const env = {
