@@ -67,17 +67,38 @@
               </div>
             </div>
 
-            <div>
-              <label for="tenant-admin-user" class="block text-sm font-medium text-gray-700">
-                Initial Tenant Admin User ID (optional UUID)
+            <div class="space-y-2">
+              <label for="tenant-admin-user-lookup" class="block text-sm font-medium text-gray-700">
+                Initial Tenant Admin (optional lookup by name/email)
               </label>
-              <input
-                id="tenant-admin-user"
+              <div class="flex gap-2">
+                <input
+                  id="tenant-admin-user-lookup"
+                  v-model="tenantAdminLookupQuery"
+                  data-testid="tenant-admin-user-lookup-input"
+                  type="text"
+                  placeholder="Search by name or email"
+                  class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+                <button
+                  type="button"
+                  class="mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  @click="handleLookupTenantAdmin"
+                >
+                  Search
+                </button>
+              </div>
+              <select
+                v-if="tenantAdminLookupResults.length"
                 v-model="assignTenantAdminUserId"
-                data-testid="tenant-admin-user-id-input"
-                type="text"
-                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              />
+                data-testid="tenant-admin-user-select"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+              >
+                <option value="">Select a user</option>
+                <option v-for="user in tenantAdminLookupResults" :key="user.id" :value="user.id">
+                  {{ user.firstName }} {{ user.lastName }} ({{ user.email }})
+                </option>
+              </select>
             </div>
 
             <div>
@@ -158,7 +179,7 @@
 import { onMounted, ref } from 'vue';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import AppBreadcrumbs from '@/components/common/AppBreadcrumbs.vue';
-import { createTenant } from '@/services/platformAdmin';
+import { createTenant, searchScopedUsers } from '@/services/platformAdmin';
 import { useAccessStore } from '@/stores/access';
 import { useAuthStore } from '@/stores/auth';
 
@@ -176,11 +197,12 @@ const tenantStatus = ref('active');
 const billingAccountName = ref('');
 const assignTenantAdminUserId = ref('');
 const reason = ref('manual-tenant-provisioning');
+const tenantAdminLookupQuery = ref('');
+const tenantAdminLookupResults = ref<Array<{ id: string; email: string; firstName: string; lastName: string }>>([]);
 
 const isSubmitting = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const extractErrorMessage = (err: any): string =>
   err?.response?.data?.message
@@ -192,6 +214,22 @@ const refreshAccess = async (): Promise<void> => {
   await accessStore.refresh({ tenantId: authStore.user?.householdId });
 };
 
+
+const handleLookupTenantAdmin = async (): Promise<void> => {
+  errorMessage.value = '';
+  try {
+    const query = tenantAdminLookupQuery.value.trim();
+    if (query.length < 2) {
+      errorMessage.value = 'User lookup query must be at least 2 characters.';
+      return;
+    }
+    const users = await searchScopedUsers({ query, limit: 10 });
+    tenantAdminLookupResults.value = users;
+  } catch (err: any) {
+    errorMessage.value = extractErrorMessage(err);
+  }
+};
+
 const handleCreateTenant = async (): Promise<void> => {
   successMessage.value = '';
   errorMessage.value = '';
@@ -199,11 +237,6 @@ const handleCreateTenant = async (): Promise<void> => {
 
   try {
     const maybeAdminUserId = assignTenantAdminUserId.value.trim();
-    if (maybeAdminUserId && !UUID_PATTERN.test(maybeAdminUserId)) {
-      errorMessage.value = 'Initial Tenant Admin User ID must be a valid UUID.';
-      return;
-    }
-
     const payload = {
       name: tenantName.value.trim(),
       status: tenantStatus.value,
