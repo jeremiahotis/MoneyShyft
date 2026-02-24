@@ -1,0 +1,42 @@
+{
+  "story": "c-2-thread-ensure-endpoint-with-conflict-safe-idempotency",
+  "timestamp": "2026-02-24T23-01-28-945Z",
+  "total_tests": 8,
+  "api_tests": 5,
+  "e2e_tests": 3,
+  "api_test_files": 1,
+  "e2e_test_files": 1,
+  "fixture_needs": [
+    "storyC2OperatorHeaders",
+    "storyC2SecondaryOperatorHeaders",
+    "storyC2UnauthorizedHeaders",
+    "storyC2EnsurePayload",
+    "storyC2MalformedPayload",
+    "login",
+    "createStoryC2Context",
+    "threadEnsureNetworkIntercept"
+  ],
+  "fixtures_created": 0,
+  "fixtures_reused": [
+    "tests/support/factories/connectShyftStoryC2Factory.ts",
+    "tests/support/fixtures/connectShyftStoryC2.fixture.ts",
+    "tests/helpers/auth.ts",
+    "tests/support/helpers/apiClient.ts"
+  ],
+  "priority_coverage": {
+    "P0": 3,
+    "P1": 5,
+    "P2": 0,
+    "P3": 0
+  },
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}

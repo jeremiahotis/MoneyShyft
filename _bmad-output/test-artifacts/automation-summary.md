@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-24T17:03:31Z'
+lastSaved: '2026-02-24T23:05:12Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1976,3 +1976,197 @@ lastSaved: '2026-02-24T17:03:31Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story b.3 AC coverage to ATDD + automate evidence.
+
+## Story c.2 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.md`
+  - Existing ATDD files found for Story c.2:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.spec.ts`
+
+### Context Loaded
+- Story context and acceptance criteria loaded from implementation artifact.
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure loaded from `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story c.2 fixtures and factories loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryC2Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC2.fixture.ts`
+- Current backend implementation surface loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts` (`POST /threads` currently present)
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + CLI:
+  - `overview.md`, `api-request.md`, `network-recorder.md`, `auth-session.md`
+  - `intercept-network-call.md`, `recurse.md`, `log.md`, `file-utils.md`
+  - `burn-in.md`, `network-error-monitor.md`, `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story c.2 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` detected at `/Users/jeremiahotis/.nvm/versions/node/v22.22.0/bin/playwright-cli`.
+- Attempted browser exploration in session `tea-automate`:
+  - `playwright-cli -s=tea-automate open http://127.0.0.1:5174/app/connectshyft/inbox`
+  - Result: `net::ERR_CONNECTION_REFUSED` (target app host unavailable).
+  - `playwright-cli -s=tea-automate snapshot` could not run because no active page session remained.
+  - Session hygiene command executed: `playwright-cli -s=tea-automate close`.
+- Fallback applied: code + story artifact analysis for selector and flow targeting.
+
+### Acceptance Criteria to Target Mapping
+- AC1: concurrent ensures for identical `(tenant_id, org_unit_id, neighbor_id)` must converge to one active thread identity.
+- AC2: conflict-safe retries must return reused ensure outcome with stable envelope and no duplicate active identity exposure.
+- Operability/negative paths:
+  - malformed ensure payload refusal contract
+  - unauthorized ensure refusal no-leak behavior
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.spec.ts`
+- Automation expansion target files (non-ATDD regression lanes):
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): idempotent ensure contract, contention behavior, refusal/no-leak semantics.
+- **E2E** (secondary): operator inbox behavior for repeated open-conversation actions and refusal UX.
+
+### Priority Assignment
+- P0:
+  - concurrent ensure convergence to a single thread identity
+  - retry/ensureOutcome reuse contract stability
+- P1:
+  - malformed payload refusal contract + no persistence leakage
+  - unauthorized refusal determinism + no thread leakage
+  - operator refusal UX and thread-card de-duplication behavior
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+- Scope: `critical-paths`
+- Current implementation gap noted:
+  - `/api/v1/connectshyft/threads` currently returns a basic ensured payload without conflict-safe idempotency semantics, so generated c.2 automation is marked for pending implementation alignment.
+
+## Story c.2 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-24T23-01-28-945Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-24T23-01-28-945Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T23-01-28-945Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 5`
+- E2E subprocess status: `success: true`, `test_count: 3`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in a single pass for API and E2E outputs.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story c.2 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`
+- `tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryC2Factory`
+  - `connectShyftStoryC2.fixture`
+  - `login`
+  - `apiRequest`
+- No new shared fixture files required.
+
+### Summary Metrics
+- Total tests generated: `8`
+  - API tests: `5` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-24T23-01-28-945Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-24T23-01-28-945Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T23-01-28-945Z.json`
+  - `/tmp/tea-automate-summary-2026-02-24T23-01-28-945Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-24T23-01-28-945Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-24T23-01-28-945Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-24T23-01-28-945Z.json`
+
+## Story c.2 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+  - Result: passed (`8` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) used.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) introduced.
+  - priority tags (`@P0`, `@P1`) present.
+- CLI session cleanup:
+  - `playwright-cli -s=tea-automate close` completed successfully (no orphaned session).
+- Temp artifacts location:
+  - subprocess artifacts persisted to `_bmad-output/test-artifacts/automation-temp` (not left only in `/tmp`).
+
+### Execution Notes
+- Story c.2 generated tests are marked `test.fixme` pending endpoint/UI implementation alignment with c.2 acceptance criteria.
+- This preserves automation intent without introducing immediate CI instability from known contract gaps.
+
+### Key Assumptions
+- Story c.2 contract will normalize ensure response to nested thread payload with deterministic idempotency fields:
+  - `data.thread.threadId`
+  - `data.ensureOutcome` (`created`/`reused`)
+- Refusal contract for c.2 will align with story factory codes:
+  - `CONNECTSHYFT_CONTEXT_INVALID`
+  - `CONNECTSHYFT_THREAD_ENSURE_FORBIDDEN`
+- Operator UI for c.2 will expose thread-card and refusal test IDs referenced in generated E2E coverage.
+
+### Risks
+- Current `/api/v1/connectshyft/threads` route returns a simplified payload and does not yet enforce conflict-safe idempotency semantics.
+- Current inbox UI does not yet expose c.2-specific controls/selectors used in generated E2E scenarios.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story c.2 AC coverage to ATDD + automate evidence.

@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { login } from '../../helpers/auth';\nimport {\n  createStoryC2Context,\n  type StoryC2Context,\n} from '../../support/factories/connectShyftStoryC2Factory';\n\nconst buildInboxUrl = (\n  context: StoryC2Context,\n  options: {\n    actorUserId: string;\n    tenantRole: string;\n    orgUnitMemberships: string[];\n  },\n): string => {\n  const params = new URLSearchParams({\n    flags: 'module:on,inbox:on,escalation:on,webhooks:on',\n    tenantId: context.tenantId,\n    orgUnitId: context.orgUnitId,\n    actorUserId: options.actorUserId,\n    tenantRole: options.tenantRole,\n    orgUnitMemberships: options.orgUnitMemberships.join(','),\n  });\n\n  return `${context.paths.inboxUi}?${params.toString()}`;\n};\n\ntest.describe(\n  'Story c.2 automate - thread ensure idempotency operator journeys',\n  () => {\n    test.describe.configure({ mode: 'serial' });\n\n    test.fixme(\n      '[P0] repeated open-conversation actions route operators to the same active thread card without duplicates @P0',\n      async ({ page }) => {\n        const context = createStoryC2Context();\n        await login(page);\n\n        await page.goto(\n          buildInboxUrl(context, {\n            actorUserId: context.userId,\n            tenantRole: 'ORGUNIT_MEMBER',\n            orgUnitMemberships: [context.orgUnitId],\n          }),\n        );\n\n        const firstEnsureResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/threads')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Open Conversation' }).click();\n        await firstEnsureResponse;\n\n        const secondEnsureResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/threads')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Open Conversation' }).click();\n        await secondEnsureResponse;\n\n        await expect(page.getByTestId('connectshyft-thread-card')).toHaveCount(1);\n        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');\n      },\n    );\n\n    test.fixme(\n      '[P1] hard refresh and rapid re-entry preserve identical thread identity while inbox active-thread count stays stable @P1',\n      async ({ page }) => {\n        const context = createStoryC2Context();\n        await login(page);\n\n        await page.goto(\n          buildInboxUrl(context, {\n            actorUserId: context.userId,\n            tenantRole: 'ORGUNIT_MEMBER',\n            orgUnitMemberships: [context.orgUnitId],\n          }),\n        );\n\n        const initialEnsureResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/threads')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Open Conversation' }).click();\n        await initialEnsureResponse;\n\n        const firstThreadId = await page.getByTestId('connectshyft-thread-id-chip').innerText();\n\n        await page.reload();\n\n        const secondEnsureResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/threads')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Open Conversation' }).click();\n        await secondEnsureResponse;\n\n        const secondThreadId = await page.getByTestId('connectshyft-thread-id-chip').innerText();\n        expect(secondThreadId).toBe(firstThreadId);\n        await expect(page.getByTestId('connectshyft-thread-card')).toHaveCount(1);\n      },\n    );\n\n    test.fixme(\n      '[P1] unauthorized operator context renders deterministic refusal guidance and keeps open-conversation controls disabled @P1',\n      async ({ page }) => {\n        const context = createStoryC2Context();\n        await login(page);\n\n        await page.goto(\n          buildInboxUrl(context, {\n            actorUserId: context.unauthorizedActorUserId,\n            tenantRole: 'TENANT_VIEWER',\n            orgUnitMemberships: [],\n          }),\n        );\n\n        await expect(page.getByTestId('connectshyft-inbox-refusal-banner')).toContainText(\n          'You do not have permission to open this conversation.',\n        );\n        await expect(page.getByRole('button', { name: 'Open Conversation' })).toBeDisabled();\n      },\n    );\n  },\n);\n",
+      "description": "E2E tests for operator thread ensure/reuse/refusal journeys",
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "login",
+    "createStoryC2Context",
+    "threadEnsureNetworkIntercept"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "summary": "Generated 3 E2E tests for Story c.2 operator journeys"
+}
