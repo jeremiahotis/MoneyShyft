@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "story_id": "c-2",
+  "tests": [
+    {
+      "file": "tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.api.spec.ts",
+      "expected_to_fail": true
+    }
+  ],
+  "fixture_needs": ["connectShyftStoryC2.fixture"],
+  "knowledge_fragments_used": ["data-factories", "test-quality", "api-request", "recurse"],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 failing API tests for story c-2"
+}

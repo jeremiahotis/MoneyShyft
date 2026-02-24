@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "story_id": "c-2",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.atdd.spec.ts",
+      "expected_to_fail": true
+    }
+  ],
+  "fixture_needs": ["connectShyftStoryC2Factory"],
+  "knowledge_fragments_used": ["selector-resilience", "network-first", "playwright-cli"],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 failing E2E tests for story c-2"
+}

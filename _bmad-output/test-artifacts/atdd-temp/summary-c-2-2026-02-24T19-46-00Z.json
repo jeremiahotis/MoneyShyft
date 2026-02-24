@@ -1,0 +1,11 @@
+{
+  "tdd_phase": "RED",
+  "story_id": "c-2",
+  "total_tests": 7,
+  "api_tests": 4,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}
