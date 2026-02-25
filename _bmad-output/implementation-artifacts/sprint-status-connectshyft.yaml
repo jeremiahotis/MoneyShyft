@@ -58,7 +58,7 @@ development_status:
   epic-b-retrospective: optional
   epic-c: in-progress
   c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: ready-for-dev
-  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: review
+  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: in-progress
   c-3-inbox-and-thread-detail-read-contracts: ready-for-dev
   c-4-claim-takeover-and-close-lifecycle-actions: ready-for-dev
   c-5-deterministic-escalation-scheduler-with-claim-only-reset: ready-for-dev
