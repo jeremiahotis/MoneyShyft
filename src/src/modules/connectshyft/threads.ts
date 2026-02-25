@@ -58,7 +58,8 @@ type ThreadEnsureRefusalResult = {
   ok: false;
   code:
     | 'CONNECTSHYFT_CONTEXT_INVALID'
-    | 'CONNECTSHYFT_THREAD_ENSURE_CONFLICT';
+    | 'CONNECTSHYFT_THREAD_ENSURE_CONFLICT'
+    | 'CONNECTSHYFT_THREAD_ENSURE_UNAVAILABLE';
   message: string;
   refusalType: 'validation' | 'business';
   data?: {
@@ -91,11 +92,11 @@ type DbThreadRow = {
   source: string;
   claimed_by_user_id: string | null;
   escalation_stage: number;
-  escalation_count: number;
+  escalation_count?: number | null;
   next_evaluation_at_utc: string | Date | null;
   last_inbound_cs_number_id: string | null;
   preferred_outbound_cs_number_id: string | null;
-  last_activity_at_utc: string | Date;
+  last_activity_at_utc?: string | Date | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -110,6 +111,15 @@ const normalizeNonEmptyString = (value: unknown): string => {
 
 const normalizeOptionalString = (value: unknown): string | null => {
   const normalized = normalizeNonEmptyString(value);
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizePersistedOptionalString = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
 };
 
@@ -156,11 +166,13 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   source: row.source,
   claimedByUserId: row.claimed_by_user_id,
   escalationStage: row.escalation_stage,
-  escalationCount: row.escalation_count,
+  escalationCount: typeof row.escalation_count === 'number'
+    ? row.escalation_count
+    : 0,
   nextEvaluationAtUtc: toIsoUtc(row.next_evaluation_at_utc),
-  lastInboundCsNumberId: row.last_inbound_cs_number_id,
-  preferredOutboundCsNumberId: row.preferred_outbound_cs_number_id,
-  lastActivityAtUtc: toIsoUtc(row.last_activity_at_utc) || nowIsoUtc(),
+  lastInboundCsNumberId: normalizePersistedOptionalString(row.last_inbound_cs_number_id),
+  preferredOutboundCsNumberId: normalizePersistedOptionalString(row.preferred_outbound_cs_number_id),
+  lastActivityAtUtc: toIsoUtc(row.last_activity_at_utc ?? row.updated_at_utc) || nowIsoUtc(),
   createdAtUtc: toIsoUtc(row.created_at_utc) || nowIsoUtc(),
   updatedAtUtc: toIsoUtc(row.updated_at_utc) || nowIsoUtc(),
 });
@@ -202,6 +214,13 @@ const buildThreadEnsureConflictRefusal = (): ThreadEnsureRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_THREAD_ENSURE_CONFLICT',
   message: 'Unable to ensure thread identity right now. Please retry.',
+  refusalType: 'business',
+});
+
+const buildThreadEnsureUnavailableRefusal = (): ThreadEnsureRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_THREAD_ENSURE_UNAVAILABLE',
+  message: 'Thread ensure is temporarily unavailable. Please retry shortly.',
   refusalType: 'business',
 });
 
@@ -317,11 +336,9 @@ export class KnexConnectShyftThreadStore {
       'source',
       'claimed_by_user_id',
       'escalation_stage',
-      'escalation_count',
       'next_evaluation_at_utc',
       'last_inbound_cs_number_id',
       'preferred_outbound_cs_number_id',
-      'last_activity_at_utc',
       'created_at_utc',
       'updated_at_utc',
     ];
@@ -352,65 +369,63 @@ export class KnexConnectShyftThreadStore {
 
     try {
       return await this.knexClient.transaction(async (trx) => {
-        try {
-          const [inserted] = await trx
-            .withSchema('connectshyft')
-            .table('cs_threads')
-            .insert({
-              id: threadId,
-              tenant_id: input.tenantId,
-              org_unit_id: input.orgUnitId,
-              neighbor_id: input.neighborId,
-              state: 'UNCLAIMED',
-              source: input.source,
-              claimed_by_user_id: null,
-              escalation_stage: 0,
-              escalation_count: 0,
-              next_evaluation_at_utc: null,
-              last_inbound_cs_number_id: input.lastInboundCsNumberId,
-              preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
-              last_activity_at_utc: trx.fn.now(),
-              created_at_utc: trx.fn.now(),
-              updated_at_utc: trx.fn.now(),
-            })
-            .returning<DbThreadRow[]>(this.threadColumns());
+        const returningColumns = this.threadColumns().join(', ');
+        const insertedResult = await trx.raw(
+          `
+          INSERT INTO connectshyft.cs_threads (
+            id,
+            tenant_id,
+            org_unit_id,
+            neighbor_id,
+            state,
+            source,
+            claimed_by_user_id,
+            escalation_stage,
+            next_evaluation_at_utc,
+            last_inbound_cs_number_id,
+            preferred_outbound_cs_number_id
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT DO NOTHING
+          RETURNING ${returningColumns}
+          `,
+          [
+            threadId,
+            input.tenantId,
+            input.orgUnitId,
+            input.neighborId,
+            'UNCLAIMED',
+            input.source,
+            null,
+            0,
+            null,
+            input.lastInboundCsNumberId || '',
+            input.preferredOutboundCsNumberId || '',
+          ],
+        ) as { rows?: DbThreadRow[] };
 
-          if (!inserted) {
-            return {
-              ok: false,
-              reason: 'THREAD_ID_CONFLICT',
-            } as ThreadPersistenceResult;
-          }
-
+        const inserted = insertedResult.rows?.[0];
+        if (inserted) {
           return {
             ok: true,
             ensureOutcome: 'created',
             thread: mapDbRowToThread(inserted),
           } as ThreadPersistenceResult;
-        } catch (error) {
-          if (!error || typeof error !== 'object') {
-            throw error;
-          }
+        }
 
-          const pg = error as { code?: string };
-          if (pg.code !== '23505') {
-            throw error;
-          }
-
-          const existing = await this.resolveActiveThreadByIdentity(trx, input);
-          if (!existing) {
-            return {
-              ok: false,
-              reason: 'THREAD_ID_CONFLICT',
-            } as ThreadPersistenceResult;
-          }
-
+        const existing = await this.resolveActiveThreadByIdentity(trx, input);
+        if (!existing) {
           return {
-            ok: true,
-            ensureOutcome: 'reused',
-            thread: existing,
+            ok: false,
+            reason: 'THREAD_ID_CONFLICT',
           } as ThreadPersistenceResult;
         }
+
+        return {
+          ok: true,
+          ensureOutcome: 'reused',
+          thread: existing,
+        } as ThreadPersistenceResult;
       });
     } catch (error) {
       throw error;
@@ -473,7 +488,6 @@ export const connectShyftThreadService = new ConnectShyftThreadService(defaultTh
 export class AsyncConnectShyftThreadService {
   constructor(
     private readonly store: KnexConnectShyftThreadStore = defaultKnexThreadStore,
-    private readonly fallbackService: ConnectShyftThreadService = connectShyftThreadService,
   ) {}
 
   async ensureThread(input: ConnectShyftEnsureThreadCommand): Promise<ConnectShyftEnsureThreadResult> {
@@ -522,7 +536,7 @@ export class AsyncConnectShyftThreadService {
         throw error;
       }
 
-      return this.fallbackService.ensureThread(normalizedInput);
+      return buildThreadEnsureUnavailableRefusal();
     }
   }
 }

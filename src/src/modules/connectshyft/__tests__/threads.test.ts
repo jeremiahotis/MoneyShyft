@@ -129,7 +129,7 @@ describe('connectshyft thread service', () => {
 });
 
 describe('connectshyft async thread service', () => {
-  it('falls back to in-memory ensure behavior when persistence schema is unavailable', async () => {
+  it('returns unavailable refusal when persistence schema is unavailable', async () => {
     const unavailableStore = {
       ensureThread: jest.fn(async () => {
         const error = new Error('relation does not exist') as Error & { code: string };
@@ -138,12 +138,8 @@ describe('connectshyft async thread service', () => {
       }),
     };
 
-    const fallbackService = new ConnectShyftThreadService(
-      new InMemoryConnectShyftThreadStore(),
-    );
     const service = new AsyncConnectShyftThreadService(
       unavailableStore as any,
-      fallbackService,
     );
 
     const first = await service.ensureThread({
@@ -159,16 +155,16 @@ describe('connectshyft async thread service', () => {
       source: 'VOICE',
     });
 
-    expect(first.ok).toBe(true);
-    expect(second.ok).toBe(true);
-
-    if (!first.ok || !second.ok) {
-      throw new Error('Expected fallback ensure requests to succeed');
-    }
-
-    expect(first.data.ensureOutcome).toBe('created');
-    expect(second.data.ensureOutcome).toBe('reused');
-    expect(second.data.thread.threadId).toBe(first.data.thread.threadId);
+    expect(first).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ENSURE_UNAVAILABLE',
+      refusalType: 'business',
+    });
+    expect(second).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ENSURE_UNAVAILABLE',
+      refusalType: 'business',
+    });
   });
 
   it('returns conflict refusal when persistence reports conflicting identity', async () => {

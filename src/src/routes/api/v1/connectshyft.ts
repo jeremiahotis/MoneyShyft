@@ -1560,6 +1560,25 @@ router.post('/threads', async (req: Request, res: Response) => {
   }
 
   const payload = parseThreadEnsureBody(req);
+  if (payload.threadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_CONTEXT_INVALID',
+      message: 'threadId is not accepted when ensuring a ConnectShyft thread.',
+      refusalType: 'validation',
+      httpStatus: 200,
+      data: {
+        fieldErrors: [
+          {
+            field: 'threadId',
+            reason: 'FORBIDDEN',
+            message: 'threadId is not accepted when ensuring a ConnectShyft thread.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
   const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
   if (!context) {
     return;
@@ -1568,7 +1587,6 @@ router.post('/threads', async (req: Request, res: Response) => {
   const ensured = await connectShyftThreadServiceAsync.ensureThread({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
-    threadId: payload.threadId,
     neighborId: payload.neighborId,
     source: payload.source,
     lastInboundCsNumberId: payload.lastInboundCsNumberId,

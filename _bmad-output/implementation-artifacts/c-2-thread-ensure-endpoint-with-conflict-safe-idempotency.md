@@ -1,6 +1,6 @@
 # Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,8 +23,8 @@ so that duplicate active threads are never created for the same neighbor context
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Existing-thread reuse must be deterministic and non-disruptive so operators do not see duplicate conversations.
-- Real-User Validation Evidence: Pending implementation. Validate concurrent create/open behavior from UI and API clients.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-25 operator/API validation completed via managed runtime (`npm run test:e2e -- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`, `npm run test:e2e -- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`) and follow-on guardrail regression suite (`npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Endpoint uses existing context/auth patterns; no new role-administration workflow.
@@ -128,8 +128,12 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`
 - `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`
 - `npm run test:e2e -- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+- `npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts` (from `src/`)
 - `npm test` (from `src/`)
 - `npm run build` (from `src/` and `frontend/`)
+- `npm run test:e2e -- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts` (post-fix rerun)
+- `npm run test:e2e -- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts` (post-fix rerun)
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts` (post-fix regression)
 
 ### Completion Notes List
 
@@ -139,6 +143,9 @@ GPT-5 Codex
 - Activated and passed C.2 API automation coverage for concurrent ensure, conflict-safe idempotency, refusal no-leak semantics, and envelope-key consistency.
 - Activated and passed C.2 E2E operator journey coverage for repeated open-conversation reuse, refresh-stable identity, and unauthorized disabled controls/refusal guidance.
 - Verified no regressions by running full backend Jest suite plus A.2/A.5 ConnectShyft API contract suites.
+- Resolved review finding for persistence safety by removing success-path in-memory fallback in async ensure flow; schema-missing conditions now return deterministic unavailability refusal.
+- Resolved review finding for client-controlled identifiers by rejecting client-supplied `threadId` on `POST /api/v1/connectshyft/threads` with validation refusal envelope.
+- Closed AC evidence gap by adding direct DB cardinality assertion in C.2 API concurrency test to prove exactly one active row remains after contention.
 
 ### File List
 
@@ -154,8 +161,15 @@ GPT-5 Codex
 - tests/support/fixtures/connectShyftStoryC2.fixture.ts
 - frontend/src/features/connectshyft/threads.ts
 - frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+
+## Senior Developer Review (AI)
+
+- 2026-02-25: Fixed review findings for C.2 by (1) removing success fallback to in-memory ensure when persistence is unavailable, (2) rejecting client-supplied `threadId` in thread ensure requests, (3) adding DB-backed active-row cardinality assertion to concurrency API coverage, and (4) providing concrete operator/API validation evidence and guardrail result (`pass`) in Operability Guardrails.
+- 2026-02-25: Story and sprint-status synchronized to `done` after all HIGH/MEDIUM review findings were fixed and validation suites passed.
 
 ## Change Log
 
 - 2026-02-24: Created Story c.2 ready-for-dev context document.
 - 2026-02-24: Implemented C.2 ensure endpoint idempotency flow (route + service + migration), activated API/E2E coverage, and validated regression suites.
+- 2026-02-25: Fixed code-review findings (persistence-safe ensure behavior, threadId validation refusal, DB-backed concurrency assertion), reran C.2 + A.2/A.5 suites, and closed guardrail evidence gap.

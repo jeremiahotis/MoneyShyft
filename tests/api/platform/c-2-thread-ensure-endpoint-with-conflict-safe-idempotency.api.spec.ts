@@ -2,11 +2,56 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC2.fixture';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
+const createConnectShyftDbClient = () => {
+  const knexFactory = require('../../../src/node_modules/knex');
+  return knexFactory({
+    client: 'postgresql',
+    connection: {
+      host: process.env.TEST_DB_HOST || '127.0.0.1',
+      port: Number(process.env.TEST_DB_PORT || 5432),
+      database: process.env.TEST_DB_NAME || 'moneyshyft',
+      user: process.env.TEST_DB_USER || 'jeremiahotis',
+      password: process.env.TEST_DB_PASSWORD || 'Oiurueu12',
+    },
+    pool: {
+      min: 0,
+      max: 2,
+    },
+  });
+};
+const connectShyftDb = createConnectShyftDbClient();
+
+const countActiveThreadsForIdentity = async ({
+  tenantId,
+  orgUnitId,
+  neighborId,
+}: {
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+}): Promise<number> => {
+  const counted = await connectShyftDb
+    .withSchema('connectshyft')
+    .table('cs_threads')
+    .where({
+      tenant_id: tenantId,
+      org_unit_id: orgUnitId,
+      neighbor_id: neighborId,
+    })
+    .andWhere('state', '<>', 'CLOSED')
+    .count<{ count: string | number }>({ count: '*' })
+    .first();
+
+  return Number(counted?.count ?? 0);
+};
 
 test.describe(
   'Story c.2 automate - thread ensure idempotency API coverage',
   () => {
     test.describe.configure({ mode: 'serial' });
+    test.afterAll(async () => {
+      await connectShyftDb.destroy();
+    });
 
     test(
       '[P0] concurrent ensure requests converge to one active thread identity and prevent duplicate active records @P0',
@@ -69,6 +114,13 @@ test.describe(
           },
         });
         expect(firstBody.data.thread.threadId).toBe(secondBody.data.thread.threadId);
+
+        const activeThreadCount = await countActiveThreadsForIdentity({
+          tenantId: storyC2Context.tenantId,
+          orgUnitId: storyC2Context.orgUnitId,
+          neighborId: uniqueNeighborId,
+        });
+        expect(activeThreadCount).toBe(1);
       },
     );
 
@@ -114,6 +166,40 @@ test.describe(
             },
           },
         });
+      },
+    );
+
+    test(
+      '[P1] client-supplied threadId is rejected with deterministic validation refusal @P1',
+      async ({ request, storyC2Context, storyC2OperatorHeaders, storyC2EnsurePayload }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyC2Context.paths.threadsCollection,
+          headers: storyC2OperatorHeaders,
+          data: {
+            ...storyC2EnsurePayload,
+            neighborId: `${storyC2EnsurePayload.neighborId}-threadid-${Date.now().toString(36)}`,
+            threadId: '11111111-1111-4111-8111-111111111111',
+          },
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+
+        expect(body).toMatchObject({
+          ok: false,
+          code: storyC2Context.refusalCodes.invalidContext,
+          refusalType: 'validation',
+          data: {
+            fieldErrors: [
+              expect.objectContaining({
+                field: 'threadId',
+                reason: 'FORBIDDEN',
+              }),
+            ],
+          },
+        });
+        expect(body).not.toHaveProperty('data.thread');
       },
     );
 
