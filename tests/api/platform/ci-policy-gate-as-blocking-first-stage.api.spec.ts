@@ -129,21 +129,13 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     ciPolicyContext,
   }) => {
     // Given a pull request from a story branch targeting the wrong base branch
-    let output = '';
-    try {
-      execFileSync('bash', [ciPolicyContext.policyScript], {
-        env: {
-          ...process.env,
-          GITHUB_EVENT_NAME: 'pull_request',
-          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
-          GITHUB_BASE_REF: 'production',
-        },
-        encoding: 'utf8',
-      });
-    } catch (error) {
-      const typed = error as { stdout?: string; stderr?: string };
-      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;
-    }
+    const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      event: 'pull_request',
+      headRef: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      baseRef: 'production',
+      commitSubject: '0-9: target wrong base',
+    });
 
     // Then output should include explicit branch and base context for remediation
     const hasFailureHeadline = /Policy check failed: story pull requests must target codex\/dev/.test(output);
@@ -151,28 +143,20 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       output,
     );
     const hasBaseBranchContext = /Base branch:\s*production/.test(output);
-    expect(hasFailureHeadline && hasHeadBranchContext && hasBaseBranchContext).toBe(true);
+    expect(status !== 0 && hasFailureHeadline && hasHeadBranchContext && hasBaseBranchContext).toBe(true);
   });
 
   test('[P1] pull-request default-branch failures include policy context and remediation guidance @P1', async ({
     ciPolicyContext,
   }) => {
     // Given a pull request that runs directly from a protected default branch
-    let output = '';
-    try {
-      execFileSync('bash', [ciPolicyContext.policyScript], {
-        env: {
-          ...process.env,
-          GITHUB_EVENT_NAME: 'pull_request',
-          GITHUB_HEAD_REF: 'main',
-          GITHUB_BASE_REF: 'production',
-        },
-        encoding: 'utf8',
-      });
-    } catch (error) {
-      const typed = error as { stdout?: string; stderr?: string };
-      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;
-    }
+    const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch: 'main',
+      event: 'pull_request',
+      headRef: 'main',
+      baseRef: 'production',
+      commitSubject: '0-9: default branch PR',
+    });
 
     // Then output should be actionable for remediation
     const hasFailureHeadline = /Policy check failed: pull requests must not run directly from main/.test(output);
@@ -180,7 +164,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story <story-key-or-story-file>/.test(
       output,
     );
-    expect(hasFailureHeadline && hasPolicyReference && hasRemediationHint).toBe(true);
+    expect(status !== 0 && hasFailureHeadline && hasPolicyReference && hasRemediationHint).toBe(true);
   });
 
   test('[P1] workflow guard blocks automate workflow when story argument is missing @P1', async ({

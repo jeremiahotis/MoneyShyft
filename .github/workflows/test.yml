@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [production, codex/dev]
   push:
-    branches: [production]
+    branches: [production, codex/dev]
   merge_group:
   workflow_dispatch:
     inputs:
@@ -137,7 +137,7 @@ jobs:
           install_frontend: 'true'
           ensure_playwright: 'true'
       - name: Run Playwright shard
-        run: bash scripts/ci-run-playwright-stack.sh npm run test:e2e -- --shard=${{ matrix.shard }}/4
+        run: bash scripts/ci-run-playwright-stack.sh npx playwright test --shard=${{ matrix.shard }}/4
       - name: Save shard gate snapshot
         if: always()
         run: |

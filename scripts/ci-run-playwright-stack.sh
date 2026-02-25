@@ -64,10 +64,15 @@ trap cleanup EXIT
 wait_for_http() {
   local url="$1"
   local label="$2"
-  local attempts="${3:-90}"
+  local pid="${3:-}"
+  local attempts="${4:-30}"
 
   for ((i = 1; i <= attempts; i++)); do
-    if curl --silent --show-error --fail --max-time 3 "$url" >/dev/null 2>&1; then
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+      echo "Failed: $label process (PID $pid) died unexpectedly during startup."
+      return 1
+    fi
+    if curl --silent --show-error --fail --max-time 2 "$url" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -107,6 +112,24 @@ NODE
 echo "Running backend migrations"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix src
 
+echo "Verifying backend port $PORT is available..."
+node -e "
+const net = require('net');
+const port = Number(process.env.PORT);
+const server = net.createServer();
+server.once('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(\`ERROR: Port \${port} is already in use by another process! CI stack cannot start securely.\`);
+    process.exit(1);
+  }
+});
+server.once('listening', () => {
+  server.close();
+  process.exit(0);
+});
+server.listen(port);
+" || exit 1
+
 echo "Starting backend dev server"
 (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
 BACKEND_PID=$!
@@ -115,8 +138,14 @@ echo "Starting frontend dev server"
 (cd frontend && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
-wait_for_http "${API_URL%/}/health" "backend health endpoint"
-wait_for_http "${BASE_URL%/}/login" "frontend login page"
+wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {
+  echo "Backend failed to start or bind to ${API_URL%/}. Check logs for process conflicts or port mismatches."
+  exit 1
+}
+wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PID" 30 || {
+  echo "Frontend failed to start on ${BASE_URL%/}."
+  exit 1
+}
 
 echo "Running test command: $*"
 "$@"

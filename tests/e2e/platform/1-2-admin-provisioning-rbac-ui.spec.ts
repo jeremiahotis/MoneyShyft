@@ -9,7 +9,7 @@ type SignedUpUser = {
 };
 
 const resolveBaseUrl = (): string => process.env.BASE_URL || 'http://localhost:5174';
-const resolveApiBaseUrl = (): string => process.env.API_BASE_URL || process.env.API_URL || 'http://localhost:3001';
+const resolveApiBaseUrl = (): string => process.env.API_BASE_URL || process.env.API_URL || 'http://localhost:3000';
 
 const signupTenantAdminUser = async (page: Page): Promise<SignedUpUser> => {
   const suffix = randomUUID().slice(0, 8);

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { test, expect } from '../../support/fixtures/policyWorkflowGuardStory15.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
@@ -96,12 +97,12 @@ Status: review
     const raceOutput = execFileSync(
       'bash',
       [
-        '-lc',
+        '-c',
         [
           'set +e',
-          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run1.log 2>&1 &',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 15 > run1.log 2>&1 &',
           'pid1=$!',
-          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run2.log 2>&1 &',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 15 > run2.log 2>&1 &',
           'pid2=$!',
           'wait $pid1; s1=$?',
           'wait $pid2; s2=$?',
@@ -113,6 +114,7 @@ Status: review
         env: {
           ...process.env,
           GITHUB_EVENT_NAME: 'local',
+          TMPDIR: repoDir,
         },
         encoding: 'utf8',
       },
@@ -268,11 +270,11 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       policyJob.length > 0 &&
-        policyRunsPolicyCheck &&
-        lintNeedsPolicy &&
-        testNeedsLint &&
-        backendContractsNeedsQualityGates &&
-        (inlineBurnInGraph || splitBurnInGraph),
+      policyRunsPolicyCheck &&
+      lintNeedsPolicy &&
+      testNeedsLint &&
+      backendContractsNeedsQualityGates &&
+      (inlineBurnInGraph || splitBurnInGraph),
     ).toBe(true);
   });
 
@@ -342,6 +344,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   test('[P0] automation-backed status transitions are single-winner under concurrency and keep sprint/story synchronized @P0', async ({
     story15Context,
   }) => {
+    const repoDir = join(__dirname, '../../artifacts', `1-5-concurrency-repo-${randomUUID()}`);
+    mkdirSync(repoDir, { recursive: true });
     const transitionScript = resolve(dirname(story15Context.policyScript), 'story-status-transition.sh');
     const result = runStatusTransitionConcurrencyHarness(transitionScript);
     const successCount = result.statuses.filter((status) => status === 0).length;
@@ -349,9 +353,9 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       successCount === 1
-        && conflictCount === 1
-        && /Status:\s*done/.test(result.storyStatusLine)
-        && /1-5-policy-gate-and-branch-workflow-guard-enforcement:\s*done/.test(result.sprintStatusLine),
+      && conflictCount === 1
+      && /Status:\s*done/.test(result.storyStatusLine)
+      && /1-5-policy-gate-and-branch-workflow-guard-enforcement:\s*done/.test(result.sprintStatusLine),
     ).toBe(true);
   });
 
@@ -363,8 +367,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       status !== 0
-        && /critical\/access-control but missing real-user validation evidence/.test(output)
-        && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
+      && /critical\/access-control but missing real-user validation evidence/.test(output)
+      && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
     ).toBe(true);
   });
 
