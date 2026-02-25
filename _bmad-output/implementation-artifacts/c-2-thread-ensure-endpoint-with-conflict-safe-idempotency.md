@@ -1,6 +1,6 @@
 # Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
