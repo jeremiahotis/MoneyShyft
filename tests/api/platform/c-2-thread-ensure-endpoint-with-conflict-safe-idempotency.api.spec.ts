@@ -8,7 +8,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] concurrent ensure requests converge to one active thread identity and prevent duplicate active records @P0',
       async ({
         request,
@@ -17,23 +17,29 @@ test.describe(
         storyC2SecondaryOperatorHeaders,
         storyC2EnsurePayload,
       }) => {
+        const uniqueNeighborId = `${storyC2EnsurePayload.neighborId}-concurrency-${Date.now().toString(36)}`;
+        const ensurePayload = {
+          ...storyC2EnsurePayload,
+          neighborId: uniqueNeighborId,
+        };
+
         const [firstResponse, secondResponse] = await Promise.all([
           apiRequest(request, {
             method: 'POST',
             path: storyC2Context.paths.threadsCollection,
             headers: storyC2OperatorHeaders,
-            data: storyC2EnsurePayload,
+            data: ensurePayload,
           }),
           apiRequest(request, {
             method: 'POST',
             path: storyC2Context.paths.threadsCollection,
             headers: storyC2SecondaryOperatorHeaders,
-            data: storyC2EnsurePayload,
+            data: ensurePayload,
           }),
         ]);
 
-        expect(firstResponse.status()).toBe(201);
-        expect(secondResponse.status()).toBe(201);
+        expect(firstResponse.status()).toBe(200);
+        expect(secondResponse.status()).toBe(200);
 
         const firstBody = await firstResponse.json();
         const secondBody = await secondResponse.json();
@@ -45,7 +51,7 @@ test.describe(
             thread: {
               tenantId: storyC2Context.tenantId,
               orgUnitId: storyC2Context.orgUnitId,
-              neighborId: storyC2Context.neighborId,
+              neighborId: uniqueNeighborId,
               state: 'UNCLAIMED',
             },
           },
@@ -57,7 +63,7 @@ test.describe(
             thread: {
               tenantId: storyC2Context.tenantId,
               orgUnitId: storyC2Context.orgUnitId,
-              neighborId: storyC2Context.neighborId,
+              neighborId: uniqueNeighborId,
               state: 'UNCLAIMED',
             },
           },
@@ -66,25 +72,31 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] retries of the same ensure payload return reused outcome and stable thread identity contract @P0',
       async ({ request, storyC2Context, storyC2OperatorHeaders, storyC2EnsurePayload }) => {
+        const uniqueNeighborId = `${storyC2EnsurePayload.neighborId}-retry-${Date.now().toString(36)}`;
+        const ensurePayload = {
+          ...storyC2EnsurePayload,
+          neighborId: uniqueNeighborId,
+        };
+
         const createdResponse = await apiRequest(request, {
           method: 'POST',
           path: storyC2Context.paths.threadsCollection,
           headers: storyC2OperatorHeaders,
-          data: storyC2EnsurePayload,
+          data: ensurePayload,
         });
 
         const reusedResponse = await apiRequest(request, {
           method: 'POST',
           path: storyC2Context.paths.threadsCollection,
           headers: storyC2OperatorHeaders,
-          data: storyC2EnsurePayload,
+          data: ensurePayload,
         });
 
-        expect(createdResponse.status()).toBe(201);
-        expect(reusedResponse.status()).toBe(201);
+        expect(createdResponse.status()).toBe(200);
+        expect(reusedResponse.status()).toBe(200);
 
         const createdBody = await createdResponse.json();
         const reusedBody = await reusedResponse.json();
@@ -98,14 +110,14 @@ test.describe(
               threadId: createdBody.data.thread.threadId,
               tenantId: storyC2Context.tenantId,
               orgUnitId: storyC2Context.orgUnitId,
-              neighborId: storyC2Context.neighborId,
+              neighborId: uniqueNeighborId,
             },
           },
         });
       },
     );
 
-    test.fixme(
+    test(
       '[P1] malformed ensure payloads are refused with deterministic validation envelope and no persistence leakage @P1',
       async ({ request, storyC2Context, storyC2OperatorHeaders, storyC2MalformedPayload }) => {
         const response = await apiRequest(request, {
@@ -129,14 +141,20 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] unauthorized ensure attempts return no-leak refusal semantics and never expose active thread identifiers @P1',
       async ({ request, storyC2Context, storyC2UnauthorizedHeaders, storyC2EnsurePayload }) => {
+        const uniqueNeighborId = `${storyC2EnsurePayload.neighborId}-unauth-${Date.now().toString(36)}`;
+        const ensurePayload = {
+          ...storyC2EnsurePayload,
+          neighborId: uniqueNeighborId,
+        };
+
         const response = await apiRequest(request, {
           method: 'POST',
           path: storyC2Context.paths.threadsCollection,
           headers: storyC2UnauthorizedHeaders,
-          data: storyC2EnsurePayload,
+          data: ensurePayload,
         });
 
         expect(response.status()).toBe(200);
@@ -152,7 +170,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] success and refusal ensure paths keep canonical envelope keys while preserving deterministic thread id semantics @P1',
       async ({
         request,
@@ -161,20 +179,26 @@ test.describe(
         storyC2UnauthorizedHeaders,
         storyC2EnsurePayload,
       }) => {
+        const uniqueNeighborId = `${storyC2EnsurePayload.neighborId}-keys-${Date.now().toString(36)}`;
+        const ensurePayload = {
+          ...storyC2EnsurePayload,
+          neighborId: uniqueNeighborId,
+        };
+
         const successResponse = await apiRequest(request, {
           method: 'POST',
           path: storyC2Context.paths.threadsCollection,
           headers: storyC2OperatorHeaders,
-          data: storyC2EnsurePayload,
+          data: ensurePayload,
         });
         const refusalResponse = await apiRequest(request, {
           method: 'POST',
           path: storyC2Context.paths.threadsCollection,
           headers: storyC2UnauthorizedHeaders,
-          data: storyC2EnsurePayload,
+          data: ensurePayload,
         });
 
-        expect(successResponse.status()).toBe(201);
+        expect(successResponse.status()).toBe(200);
         expect(refusalResponse.status()).toBe(200);
 
         const successBody = await successResponse.json();

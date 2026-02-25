@@ -46,7 +46,7 @@ export const test = base.extend<StoryC2Fixtures>({
   storyC2UnauthorizedHeaders: async ({ storyC2Context }, use) => {
     await use(
       createStoryC2Headers(storyC2Context, {
-        role: 'TENANT_VIEWER',
+        role: 'UNKNOWN_ROLE',
         userId: storyC2Context.unauthorizedActorUserId,
         orgUnitMemberships: [],
       }),

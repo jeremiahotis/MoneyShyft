@@ -30,7 +30,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] repeated open-conversation actions route operators to the same active thread card without duplicates @P0',
       async ({ page }) => {
         const context = createStoryC2Context();
@@ -65,7 +65,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] hard refresh and rapid re-entry preserve identical thread identity while inbox active-thread count stays stable @P1',
       async ({ page }) => {
         const context = createStoryC2Context();
@@ -105,7 +105,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] unauthorized operator context renders deterministic refusal guidance and keeps open-conversation controls disabled @P1',
       async ({ page }) => {
         const context = createStoryC2Context();

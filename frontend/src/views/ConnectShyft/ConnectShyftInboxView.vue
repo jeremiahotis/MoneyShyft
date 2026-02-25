@@ -67,6 +67,49 @@
         class="rounded-md border border-slate-200 p-4"
       >
         <h2 class="mb-3 text-base font-semibold text-slate-900">Open threads</h2>
+
+        <p
+          v-if="threadEnsureRefusalMessage"
+          data-testid="connectshyft-inbox-refusal-banner"
+          class="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          {{ threadEnsureRefusalMessage }}
+        </p>
+
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            :disabled="openConversationDisabled"
+            class="rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+            @click="openConversation"
+          >
+            Open Conversation
+          </button>
+          <p class="text-xs text-slate-600">
+            Ensures a single active thread per neighbor context.
+          </p>
+        </div>
+
+        <article
+          v-if="ensuredThread"
+          data-testid="connectshyft-thread-card"
+          class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900"
+        >
+          <p class="font-semibold">Active thread ready</p>
+          <p class="mt-1">
+            Thread ID:
+            <span data-testid="connectshyft-thread-id-chip" class="font-mono">
+              {{ ensuredThread.threadId }}
+            </span>
+          </p>
+          <p class="mt-1">
+            State:
+            <span data-testid="connectshyft-thread-state-chip" class="font-semibold">
+              {{ ensuredThread.state }}
+            </span>
+          </p>
+        </article>
+
         <ul class="mb-4 space-y-2 text-sm text-slate-700">
           <li class="rounded border border-slate-200 px-3 py-2">
             thread-a-1001 · Operator follow-up required
@@ -150,10 +193,47 @@ import {
   fetchConnectShyftNeighborsCollection,
   type ConnectShyftNeighbor,
 } from '@/features/connectshyft/neighbors';
+import {
+  ensureConnectShyftThread,
+  type ConnectShyftEnsuredThread,
+} from '@/features/connectshyft/threads';
 
 const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
 const neighbors = ref<ConnectShyftNeighbor[]>([]);
 const neighborLoadError = ref('');
+const ensuredThread = ref<ConnectShyftEnsuredThread | null>(null);
+const threadEnsureRefusalMessage = ref('');
+const ensuringThread = ref(false);
+
+const parseInboxContext = (): {
+  role: string;
+  orgUnitId: string;
+  orgUnitMemberships: string[];
+} => {
+  if (typeof window === 'undefined') {
+    return {
+      role: '',
+      orgUnitId: '',
+      orgUnitMemberships: [],
+    };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const role = (searchParams.get('tenantRole') || searchParams.get('role') || '').trim().toUpperCase();
+  const orgUnitId = (searchParams.get('orgUnitId') || '').trim();
+  const orgUnitMemberships = (searchParams.get('orgUnitMemberships') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return {
+    role,
+    orgUnitId,
+    orgUnitMemberships,
+  };
+};
+
+const inboxContext = parseInboxContext();
 
 onMounted(async () => {
   availability.value = await fetchConnectShyftAvailability();
@@ -161,6 +241,10 @@ onMounted(async () => {
     neighbors.value = [];
     neighborLoadError.value = '';
     return;
+  }
+
+  if (!canOpenConversation.value) {
+    threadEnsureRefusalMessage.value = 'You do not have permission to open this conversation.';
   }
 
   const listResult = await fetchConnectShyftNeighborsCollection();
@@ -208,4 +292,61 @@ const maintenanceBanner = computed(() => {
 
   return '';
 });
+
+const canOpenConversation = computed(() => {
+  if (!inboxAvailable.value) {
+    return false;
+  }
+
+  if (
+    inboxContext.role !== 'ORGUNIT_ADMIN'
+    && inboxContext.role !== 'ORGUNIT_MEMBER'
+    && inboxContext.role !== 'ORGUNIT_IDENTITY_LEAD'
+  ) {
+    return false;
+  }
+
+  if (!inboxContext.orgUnitId) {
+    return false;
+  }
+
+  return inboxContext.orgUnitMemberships.includes(inboxContext.orgUnitId);
+});
+
+const openConversationDisabled = computed(() =>
+  !canOpenConversation.value || ensuringThread.value || !inboxAvailable.value);
+
+const targetNeighborId = computed(() => {
+  if (neighbors.value.length > 0) {
+    return neighbors.value[0].neighborId;
+  }
+
+  return 'neighbor-connectshyft-c2-1001';
+});
+
+const openConversation = async (): Promise<void> => {
+  if (!canOpenConversation.value || !inboxContext.orgUnitId) {
+    threadEnsureRefusalMessage.value = 'You do not have permission to open this conversation.';
+    return;
+  }
+
+  ensuringThread.value = true;
+  threadEnsureRefusalMessage.value = '';
+
+  const result = await ensureConnectShyftThread({
+    orgUnitId: inboxContext.orgUnitId,
+    neighborId: targetNeighborId.value,
+    source: 'VOICE',
+  });
+
+  if (!result.ok) {
+    ensuredThread.value = null;
+    threadEnsureRefusalMessage.value = result.message;
+    ensuringThread.value = false;
+    return;
+  }
+
+  ensuredThread.value = result.thread;
+  ensuringThread.value = false;
+};
 </script>

@@ -1,6 +1,6 @@
 # Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,19 +31,19 @@ so that duplicate active threads are never created for the same neighbor context
 
 ## Tasks / Subtasks
 
-- [ ] Implement thread ensure API contract (AC: 1, 2)
-  - [ ] Add/align `POST /api/v1/connectshyft/threads` route/service behavior to enforce ensure semantics.
-  - [ ] Return existing active thread when one already exists for `(tenant_id, org_unit_id, neighbor_id)`.
-- [ ] Implement conflict-safe idempotency flow (AC: 1, 2)
-  - [ ] Use transaction + unique-constraint conflict handling to prevent duplicate active threads.
-  - [ ] Normalize response payload to same thread identity for all conflicting callers.
-- [ ] Implement deterministic refusal and validation behavior (AC: 1)
-  - [ ] Refuse invalid tenant/orgUnit context or malformed neighbor identifiers with shared refusal envelope.
-  - [ ] Keep no-leak semantics on cross-tenant or unauthorized attempts.
-- [ ] Add concurrency and contract coverage (AC: 1, 2)
-  - [ ] API tests for same-key concurrent ensures returning identical thread id.
-  - [ ] Tests ensuring only one active row remains after contention.
-  - [ ] E2E sanity flow confirming operator sees/enters existing thread context without duplicate cards.
+- [x] Implement thread ensure API contract (AC: 1, 2)
+  - [x] Add/align `POST /api/v1/connectshyft/threads` route/service behavior to enforce ensure semantics.
+  - [x] Return existing active thread when one already exists for `(tenant_id, org_unit_id, neighbor_id)`.
+- [x] Implement conflict-safe idempotency flow (AC: 1, 2)
+  - [x] Use transaction + unique-constraint conflict handling to prevent duplicate active threads.
+  - [x] Normalize response payload to same thread identity for all conflicting callers.
+- [x] Implement deterministic refusal and validation behavior (AC: 1)
+  - [x] Refuse invalid tenant/orgUnit context or malformed neighbor identifiers with shared refusal envelope.
+  - [x] Keep no-leak semantics on cross-tenant or unauthorized attempts.
+- [x] Add concurrency and contract coverage (AC: 1, 2)
+  - [x] API tests for same-key concurrent ensures returning identical thread id.
+  - [x] Tests ensuring only one active row remains after contention.
+  - [x] E2E sanity flow confirming operator sees/enters existing thread context without duplicate cards.
 
 ## Dev Notes
 
@@ -123,17 +123,39 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story c-2-thread-ensure-endpoint-with-conflict-safe-idempotency`
+- `npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts` (from `src/`)
+- `npm run test:e2e -- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts`
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`
+- `npm run test:e2e -- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts`
+- `npm test` (from `src/`)
+- `npm run build` (from `src/` and `frontend/`)
 
 ### Completion Notes List
 
-- Created implementation-ready Story c.2 context with conflict-safe ensure semantics and deterministic idempotent response requirements.
+- Implemented `connectshyft` thread ensure domain service with in-memory + Knex persistence paths, insert-under-constraint conflict handling, and deterministic ensure outcomes (`created`/`reused`).
+- Added missing ConnectShyft thread schema migration `20260224170000_create_connectshyft_threads.ts` with canonical state constraint, active-thread partial unique index, and due-evaluation index.
+- Wired `POST /api/v1/connectshyft/threads` to thread service and added dedicated refusal handling for unauthorized ensure callers (`CONNECTSHYFT_THREAD_ENSURE_FORBIDDEN`) and malformed payload validation (`CONNECTSHYFT_CONTEXT_INVALID`, `refusalType=validation`).
+- Activated and passed C.2 API automation coverage for concurrent ensure, conflict-safe idempotency, refusal no-leak semantics, and envelope-key consistency.
+- Activated and passed C.2 E2E operator journey coverage for repeated open-conversation reuse, refresh-stable identity, and unauthorized disabled controls/refusal guidance.
+- Verified no regressions by running full backend Jest suite plus A.2/A.5 ConnectShyft API contract suites.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.md
+- src/src/migrations/20260224170000_create_connectshyft_threads.ts
+- src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts
+- src/src/modules/connectshyft/threads.ts
+- src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/platform/envelopes/response.ts
+- src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts
+- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
+- tests/support/fixtures/connectShyftStoryC2.fixture.ts
+- frontend/src/features/connectshyft/threads.ts
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 
 ## Change Log
 
 - 2026-02-24: Created Story c.2 ready-for-dev context document.
-
+- 2026-02-24: Implemented C.2 ensure endpoint idempotency flow (route + service + migration), activated API/E2E coverage, and validated regression suites.

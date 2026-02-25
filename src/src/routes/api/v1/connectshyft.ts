@@ -17,6 +17,9 @@ import {
   type ConnectShyftNeighborPhoneInput,
 } from '../../../modules/connectshyft/neighbors';
 import {
+  connectShyftThreadServiceAsync,
+} from '../../../modules/connectshyft/threads';
+import {
   ConnectShyftEscalationConfigService,
   KnexConnectShyftEscalationConfigStore,
   connectShyftEscalationRecipientScopes,
@@ -404,6 +407,38 @@ const enforceThreadViewCapability = (
   return false;
 };
 
+const enforceThreadEnsureCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const normalizedRole = normalizeNonEmptyString(requestedRole)?.toUpperCase() || '';
+  if (normalizedRole === 'TENANT_VIEWER') {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ENSURE_FORBIDDEN',
+      message: 'Thread ensure requires an authorized ConnectShyft role.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return false;
+  }
+
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_VIEW_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_ENSURE_FORBIDDEN',
+    message: 'Thread ensure requires an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const enforceEscalationActionMembership = (
   req: Request,
   res: Response,
@@ -477,6 +512,25 @@ const parseOrgUnitIdFromBody = (req: Request): string | null => {
   const normalized = req.body.orgUnitId.trim();
   return normalized.length > 0 ? normalized : null;
 };
+
+const parseThreadEnsureBody = (req: Request) => ({
+  orgUnitId: parseOrgUnitIdFromBody(req),
+  threadId: typeof req.body?.threadId === 'string'
+    ? req.body.threadId.trim()
+    : '',
+  neighborId: typeof req.body?.neighborId === 'string'
+    ? req.body.neighborId.trim()
+    : '',
+  source: typeof req.body?.source === 'string'
+    ? req.body.source.trim()
+    : '',
+  lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
+    ? req.body.lastInboundCsNumberId.trim()
+    : '',
+  preferredOutboundCsNumberId: typeof req.body?.preferredOutboundCsNumberId === 'string'
+    ? req.body.preferredOutboundCsNumberId.trim()
+    : '',
+});
 
 const parseMappingBody = (req: Request) => ({
   twilioNumberE164: typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : '',
@@ -1501,30 +1555,44 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceThreadViewCapability(req, res)) {
+  if (!enforceThreadEnsureCapability(req, res)) {
     return;
   }
 
-  const requestedOrgUnitId = typeof req.body?.orgUnitId === 'string'
-    ? req.body.orgUnitId
-    : null;
-  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
+  const payload = parseThreadEnsureBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
   if (!context) {
     return;
   }
 
-  const fallbackThreadId = 'thread-connectshyft-generated';
-  const requestedThreadId = typeof req.body?.threadId === 'string'
-    ? req.body.threadId.trim()
-    : '';
+  const ensured = await connectShyftThreadServiceAsync.ensureThread({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId: payload.threadId,
+    neighborId: payload.neighborId,
+    source: payload.source,
+    lastInboundCsNumberId: payload.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: payload.preferredOutboundCsNumberId,
+  });
+
+  if (!ensured.ok) {
+    refusal(res, {
+      code: ensured.code,
+      message: ensured.message,
+      refusalType: ensured.refusalType,
+      httpStatus: 200,
+      data: ensured.data,
+    });
+    return;
+  }
 
   return success(res, {
-    code: 'CONNECTSHYFT_THREAD_ENSURED',
+    code: ensured.code,
     message: 'ConnectShyft thread ensured',
+    httpStatus: ensured.httpStatus,
     data: {
-      threadId: requestedThreadId || fallbackThreadId,
-      orgUnitId: context.orgUnitId,
-      neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId : null,
+      ensureOutcome: ensured.data.ensureOutcome,
+      thread: ensured.data.thread,
     },
   });
 });
